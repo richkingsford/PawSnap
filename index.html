@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SheetPlan — Ceiling Drywall Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="brand-mark">▦</span><span>Sheet<span class="accent">Plan</span></span></div><div class="header-note">CEILING LAYOUT TOOL <span class="dot"></span> IMPERIAL</div></header>
+  <main class="app-shell">
+    <section class="intro"><div><p class="eyebrow">DRYWALL PLACEMENT WORKBENCH</p><h1>Lay it out once.<br><em>Cut with confidence.</em></h1><p class="lede">Turn ceiling dimensions into a clean sheetrock placement plan — with cut sizes, seams, and waste calculated for you.</p></div><div class="project-tag"><span>PROJECT</span><strong id="projectLabel">Untitled ceiling</strong></div></section>
+    <div class="workspace">
+      <aside class="controls">
+        <div class="panel-title"><span class="step">01</span><div><h2>Ceiling dimensions</h2><p>Measure wall to wall</p></div></div>
+        <label>Length <span>ft</span><input id="length" type="number" min="1" step="0.1" value="20" /></label>
+        <label>Width <span>ft</span><input id="width" type="number" min="1" step="0.1" value="12" /></label>
+        <label>Room / project name<input id="project" type="text" placeholder="e.g. Main room" /></label>
+        <div class="panel-title second"><span class="step">02</span><div><h2>Sheet setup</h2><p>Choose your material</p></div></div>
+        <label>Sheet size<select id="sheet"><option value="4x8">4 × 8 ft</option><option value="4x10">4 × 10 ft</option><option value="4x12">4 × 12 ft</option></select></label>
+        <label>Layout direction<select id="direction"><option value="length">Run sheets along length</option><option value="width">Run sheets along width</option></select></label>
+        <label class="check"><input id="stagger" type="checkbox" checked /><span>Stagger end joints</span></label>
+        <button class="primary" id="recalc">Update layout <span>↗</span></button>
+        <p class="tip"><span>✦</span> Add ⅛ in to each cut for a snug, scribe-ready fit.</p>
+      </aside>
+      <section class="plan-area">
+        <div class="plan-head"><div><p class="eyebrow">PLACEMENT PLAN</p><h2 id="planTitle">20′ × 12′ ceiling</h2></div><button class="ghost" id="print">Print plan <span>⌁</span></button></div>
+        <div class="canvas-card"><div class="dimension top"><span id="topDim">20′ 0″</span></div><div class="dimension side"><span id="sideDim">12′ 0″</span></div><div id="canvas" class="canvas"></div><div class="legend"><span><i class="full"></i> Full sheet</span><span><i class="cut"></i> Cut / fill</span><span><i class="seam"></i> Joint line</span></div></div>
+        <div class="stats"><div><span class="stat-label">SHEETS NEEDED</span><strong id="sheetCount">6</strong><small id="sheetNote">4 × 8 sheets</small></div><div><span class="stat-label">COVERAGE</span><strong id="coverage">240 <small>sq ft</small></strong><small id="coverageNote">Ceiling: 240 sq ft</small></div><div><span class="stat-label">EST. WASTE</span><strong id="waste">0%</strong><small id="wasteNote">0 sq ft offcut</small></div><div class="accent-stat"><span class="stat-label">INSTALL ROWS</span><strong id="rows">3</strong><small id="rowsNote">4′ wide courses</small></div></div>
+        <div class="cutlist"><div class="cut-head"><div><p class="eyebrow">CUT LIST</p><h2>Course-by-course breakdown</h2></div><span class="mono" id="summary">3 courses · 6 sheets</span></div><div id="cutRows"></div></div>
+      </section>
+    </div>
+    <footer><span>SheetPlan v1.0</span><span>Always verify on site · Account for framing, lights, and access panels before cutting.</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body></html>
