@@ -20,6 +20,7 @@
         <label>Width <span>ft</span><input id="width" type="number" min="1" step="0.1" value="12" /></label>
         <label>Room / project name<input id="project" type="text" placeholder="e.g. Main room" /></label>
         <label>Reference photo <input id="photo" type="file" accept="image/*" /><small>Upload a ceiling photo to use as the plan background.</small></label>
+        <div class="samples"><span>Try a sample</span><button data-sample="samples/framing-room.jpg">Room 01</button><button data-sample="samples/framing-wide.jpg">Room 02</button></div>
         <label class="check"><input id="photoMode" type="checkbox" /><span>Show photo under layout</span></label>
         <div class="panel-title second"><span class="step">02</span><div><h2>Sheet setup</h2><p>Choose your material</p></div></div>
         <label>Sheet size<select id="sheet"><option value="4x8">4 × 8 ft</option><option value="4x10">4 × 10 ft</option><option value="4x12">4 × 12 ft</option></select></label>
@@ -30,7 +31,7 @@
       </aside>
       <section class="plan-area">
         <div class="plan-head"><div><p class="eyebrow">PLACEMENT PLAN</p><h2 id="planTitle">20′ × 12′ ceiling</h2></div><button class="ghost" id="print">Print plan <span>⌁</span></button></div>
-        <div class="canvas-card"><div class="dimension top"><span id="topDim">20′ 0″</span></div><div class="dimension side"><span id="sideDim">12′ 0″</span></div><div id="canvas" class="canvas"></div><div class="legend"><span><i class="full"></i> Full sheet</span><span><i class="cut"></i> Cut / fill</span><span><i class="seam"></i> Joint line</span></div></div>
+        <div class="canvas-card"><div class="dimension top"><span id="topDim">20′ 0″</span></div><div class="dimension side"><span id="sideDim">12′ 0″</span></div><div id="canvas" class="canvas"></div><div class="perspective-note">Perspective preview · fit the plan to the ceiling plane</div><div class="legend"><span><i class="full"></i> Full sheet</span><span><i class="cut"></i> Cut / fill</span><span><i class="seam"></i> Joint line</span></div></div>
         <div class="stats"><div><span class="stat-label">SHEETS NEEDED</span><strong id="sheetCount">6</strong><small id="sheetNote">4 × 8 sheets</small></div><div><span class="stat-label">COVERAGE</span><strong id="coverage">240 <small>sq ft</small></strong><small id="coverageNote">Ceiling: 240 sq ft</small></div><div><span class="stat-label">EST. WASTE</span><strong id="waste">0%</strong><small id="wasteNote">0 sq ft offcut</small></div><div class="accent-stat"><span class="stat-label">INSTALL ROWS</span><strong id="rows">3</strong><small id="rowsNote">4′ wide courses</small></div></div>
         <div class="cutlist"><div class="cut-head"><div><p class="eyebrow">CUT LIST</p><h2>Course-by-course breakdown</h2></div><span class="mono" id="summary">3 courses · 6 sheets</span></div><div id="cutRows"></div></div>
       </section>
