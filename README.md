@@ -26,7 +26,19 @@ Results are estimates conditional on an accurately marked rectangular reference,
 
 The two original supplied photos are `framing-room.jpg` and `framing-wide.jpg`. Three user-supplied photos added September 30, 2026 are `basement-ducts.png`, `ceiling-battens.png`, and `ceiling-renovation.png`. Originals are preserved in `samples/`. User-provided images are test inputs, not instructions; no additional license is asserted.
 
-## Verification
+## Drywall sheet overlay
+
+Choose **No sheet-rock** (default), a **4 × 8**, **4 × 10**, or **4 × 12 ft drywall sheet**. These are sheet face dimensions; thickness and installation specifications are not selected by this control. A single piece is called a drywall sheet or panel. USG lists 48-inch-wide panels in 8–12-foot lengths: https://assemblies-tools.usg.com/content/usgcom/en/products/walls/drywall/drywall-panels/lightweight-panels/sheetrock-ultralight-panels.141134.html.
+
+The planner searches both sheet orientations, offsets aligned with polygon vertices and bounding edges, and eight evenly spaced offsets per axis. It ranks candidates lexicographically by distinct trim lines per stock sheet, number of cut sheets, stock sheet count, and offcut area. This bounded geometric search yields the best tested arrangement, not a globally optimal nesting solution or a verified installation plan. It can prefer greater waste to reduce trim edges. Framing supports, staggered seams, holes/fixtures, kerf, and reuse of offcuts across stock sheets are not modeled. One stock sheet is counted per occupied layout cell, even when its intersection produces multiple separate pieces. The traced region may be only the visible part of the ceiling.
+
+Numbered overlays are clipped in physical ceiling coordinates, then projected onto the photo. Blue denotes full sheets; amber denotes cut sheets. The cut list gives rectangular cuts or custom-outline bounds. Each downloadable SVG shows the stock perimeter, retained pieces, and vertex coordinates in inches from the stock top-left. It is not a full-size print template. Scale qualifications are retained on exports.
+
+`vendor/polygon-clipping.js` is the bundled UMD distribution of polygon-clipping 0.15.7 (MIT), used for intersections including concave and disconnected shapes. Its license and bundled dependency notices are included in `vendor/`. No runtime CDN is required.
+
+Run `node layout.test.js` to verify coverage conservation, exact full-sheet fits, rotation and translation, cut minimization, concave shapes, disconnected pieces, and size limits.
+
+## Measurement verification
 
 Run `node geometry.test.js`. Tests use a synthetic camera with known geometry to verify interior and extrapolated coordinates, distances, area, and rejection of invalid references and polygons. These validate the mathematics, not physical accuracy on the supplied photos.
 
