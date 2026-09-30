@@ -34,6 +34,20 @@
     if(plane.some(p=>p.some(v=>!Number.isFinite(v)||Math.abs(v)>10000)))throw Error('Unstable scale near the horizon. Move the reference or reduce the region.');
     return {forward,inverse,plane};
   }
-  const api={convex,homography,project,area,simple,calibrate,distance:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])};
+  function calibrateBoards(q,widths,boardWidth,region){
+    if(widths.length!==4)throw Error('Mark two width endpoints on each of two boards running in different directions.');
+    if(!Number.isFinite(boardWidth)||boardWidth<=0)throw Error('Board width must be positive.');
+    const unit=calibrate(q,1,1,[...region,...widths]);
+    const p=widths.map(v=>project(unit.inverse,v));
+    const x1=(p[1][0]-p[0][0])**2,y1=(p[1][1]-p[0][1])**2;
+    const x2=(p[3][0]-p[2][0])**2,y2=(p[3][1]-p[2][1])**2;
+    const determinant=x1*y2-x2*y1;
+    if((x1+y1)<1e-12||(x2+y2)<1e-12||Math.abs(determinant)<.05*(x1+y1)*(x2+y2))throw Error('These widths cannot resolve both axes. Mark widths across boards running in two different directions.');
+    const w2=boardWidth**2*(y2-y1)/determinant,d2=boardWidth**2*(x1-x2)/determinant;
+    if(w2<=0||d2<=0)throw Error('The width marks conflict with the framing rectangle. Check the corners and mark straight across each board.');
+    const w=Math.sqrt(w2),d=Math.sqrt(d2);
+    return {...calibrate(q,w,d,region),referenceWidth:w,referenceDepth:d};
+  }
+  const api={convex,homography,project,area,simple,calibrate,calibrateBoards,distance:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])};
   if(typeof module!=='undefined')module.exports=api;else root.Geometry=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
