@@ -1,42 +1,16 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SheetPlan — Ceiling Drywall Planner</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header class="topbar"><div class="brand"><span class="brand-mark">▦</span><span>Sheet<span class="accent">Plan</span></span></div><div class="header-note">CEILING LAYOUT TOOL <span class="dot"></span> IMPERIAL</div></header>
-  <main class="app-shell">
-    <section class="intro"><div><p class="eyebrow">DRYWALL PLACEMENT WORKBENCH</p><h1>Lay it out once.<br><em>Cut with confidence.</em></h1><p class="lede">Turn ceiling dimensions into a clean sheetrock placement plan — with cut sizes, seams, and waste calculated for you.</p></div><div class="project-tag"><span>PROJECT</span><strong id="projectLabel">Untitled ceiling</strong></div></section>
-    <div class="workspace">
-      <aside class="controls">
-        <div class="panel-title"><span class="step">01</span><div><h2>Ceiling dimensions</h2><p>Measure wall to wall</p></div></div>
-        <label>Length <span>ft</span><input id="length" type="number" min="1" step="0.1" value="20" /></label>
-        <label>Width <span>ft</span><input id="width" type="number" min="1" step="0.1" value="12" /></label>
-        <label>Room / project name<input id="project" type="text" placeholder="e.g. Main room" /></label>
-        <label>Reference photo <input id="photo" type="file" accept="image/*" /><small>Upload a ceiling photo to use as the plan background.</small></label>
-        <div class="samples"><span>Try a sample</span><button data-sample="samples/framing-room.jpg">Room 01</button><button data-sample="samples/framing-wide.jpg">Room 02</button></div>
-        <label class="check"><input id="photoMode" type="checkbox" /><span>Show photo under layout</span></label>
-        <div class="panel-title second"><span class="step">02</span><div><h2>Sheet setup</h2><p>Choose your material</p></div></div>
-        <label>Sheet size<select id="sheet"><option value="4x8">4 × 8 ft</option><option value="4x10">4 × 10 ft</option><option value="4x12">4 × 12 ft</option></select></label>
-        <label>Layout direction<select id="direction"><option value="length">Run sheets along length</option><option value="width">Run sheets along width</option></select></label>
-        <label class="check"><input id="stagger" type="checkbox" checked /><span>Stagger end joints</span></label>
-        <button class="primary" id="recalc">Update layout <span>↗</span></button>
-        <p class="tip"><span>✦</span> Add ⅛ in to each cut for a snug, scribe-ready fit.</p>
-      </aside>
-      <section class="plan-area">
-        <div class="plan-head"><div><p class="eyebrow">PLACEMENT PLAN</p><h2 id="planTitle">20′ × 12′ ceiling</h2></div><button class="ghost" id="print">Print plan <span>⌁</span></button></div>
-        <div class="canvas-card"><div class="dimension top"><span id="topDim">20′ 0″</span></div><div class="dimension side"><span id="sideDim">12′ 0″</span></div><div id="canvas" class="canvas"></div><div class="perspective-note">Perspective preview · fit the plan to the ceiling plane</div><div class="legend"><span><i class="full"></i> Full sheet</span><span><i class="cut"></i> Cut / fill</span><span><i class="seam"></i> Joint line</span></div></div>
-        <div class="stats"><div><span class="stat-label">SHEETS NEEDED</span><strong id="sheetCount">6</strong><small id="sheetNote">4 × 8 sheets</small></div><div><span class="stat-label">COVERAGE</span><strong id="coverage">240 <small>sq ft</small></strong><small id="coverageNote">Ceiling: 240 sq ft</small></div><div><span class="stat-label">EST. WASTE</span><strong id="waste">0%</strong><small id="wasteNote">0 sq ft offcut</small></div><div class="accent-stat"><span class="stat-label">INSTALL ROWS</span><strong id="rows">3</strong><small id="rowsNote">4′ wide courses</small></div></div>
-        <div class="cutlist"><div class="cut-head"><div><p class="eyebrow">CUT LIST</p><h2>Course-by-course breakdown</h2></div><span class="mono" id="summary">3 courses · 6 sheets</span></div><div id="cutRows"></div></div>
-      </section>
-    </div>
-    <footer><span>SheetPlan v1.0</span><span>Always verify on site · Account for framing, lights, and access panels before cutting.</span></footer>
-  </main>
-  <script src="app.js"></script>
-</body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CeilingScale · Perspective measurement</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="measurement.css"></head>
+<body><header class="topbar"><div class="brand">▦ Ceiling<span class="accent">Scale</span></div><span class="header-note">PHOTO MEASUREMENT LAB</span></header>
+<main class="app-shell"><section class="intro"><div><p class="eyebrow">PERSPECTIVE • SCALE • MEASURE</p><h1>Make perspective<br><em>measurable.</em></h1><p class="lede">Calibrate a ceiling plane with a known rectangle. Trace the visible ceiling and explore a grid in real inches.</p></div><span id="status" class="status">Uncalibrated</span></section>
+<div class="workspace"><aside class="controls">
+<h2>01 · Choose a photo</h2><label>Upload from your device<input id="photo" type="file" accept="image/*"></label><div id="samples" class="samples"></div><p class="help">Photos stay in this browser. Samples have no verified dimensions.</p>
+<h2>02 · Set the reference</h2><p class="help">Use four corners of a <strong>real rectangle on the same ceiling plane</strong>, such as a measured framing bay. Click A → B → C → D around its perimeter. A–B is width; B–C is depth. Do not assume standard joist spacing.</p>
+<button id="reference">Mark 4 reference corners</button><label>A–B width (inches)<input id="refWidth" type="number" min="0.1" max="2400" step="any" placeholder="Measured width"></label><label>B–C depth (inches)<input id="refDepth" type="number" min="0.1" max="2400" step="any" placeholder="Measured depth"></label>
+<label class="check"><input type="checkbox" id="confirmed">These are measured dimensions of a rectangle on this plane.</label><p class="help" id="referenceInfo">No reference marked.</p>
+<h2>03 · Select the ceiling</h2><p class="help">Trace only one flat surface. Click around the visible region, then finish. Sample outlines are editable starting points, not detected room boundaries.</p><div class="button-row"><button id="boundary">Trace region</button><button id="finish">Finish outline</button><button id="undo">Undo point</button></div>
+<h2>04 · Explore inches</h2><label>Grid spacing<select id="spacing"><option value="1">1 inch</option><option value="6">6 inches</option><option value="12" selected>12 inches</option></select></label><label>Photo zoom<select id="zoom"><option value="1">Fit</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><div class="button-row"><button id="measure">Measure 2 points</button><button id="edit">Adjust points</button></div><label>Check this distance against a known length (inches)<input id="checkLength" type="number" min="0.1" step="any" placeholder="Optional independent check"></label><p id="checkResult" class="help">Use a second known distance to check calibration.</p><button id="export">Download annotated image</button>
+</aside><section class="plan-area"><div class="plan-head"><div><p class="eyebrow">CEILING PLANE</p><h2 id="photoTitle">Sample</h2></div><span id="modeLabel" class="mono">ADJUST POINTS</span></div>
+<p id="instruction" role="status" aria-live="polite" class="instruction"></p><div class="viewport"><svg id="scene" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ceiling photo with editable perspective measurement grid"></svg></div>
+<div class="legend"><span>🟡 Reference A–D</span><span>🟢 Ceiling boundary</span><span>🔵 Measured segment</span></div><div class="stats"><div><span class="stat-label">SELECTED AREA</span><strong id="area">—</strong><small>sq ft · selected plane only</small></div><div><span class="stat-label">POINT DISTANCE</span><strong id="distance">—</strong><small>inches · on ceiling plane</small></div><div><span class="stat-label">GRID</span><strong id="gridValue">—</strong><small id="gridNote">Requires calibration</small></div></div>
+<p id="error" role="alert"></p><p class="help">A single ordinary photo has no absolute scale. A valid reference enables perspective-correct measurements, but accuracy still depends on corner placement, reference measurements, image resolution, lens distortion, and a flat surface. Off-plane beams, ducts and sloping sections need separate calibration. The sample photos alone cannot establish verified inch measurements.</p><div id="edges" class="edges"></div>
+</section></div><footer><span>CeilingScale · Measurement prototype</span><span>Reference-calibrated estimates · No automatic ceiling detection</span></footer></main><script src="geometry.js"></script><script src="app.js"></script></body></html>
