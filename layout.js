@@ -44,13 +44,29 @@
     return {...best,tested};
   }
   function visible(region,width,length,anchor=[0,0]){
-    let best=null;
+    const b=bounds(region);let best=null,tested=0;
     for(const [w,h] of [[width,length],[length,width]]){
-      const result=candidate(region,w,h,anchor[0],anchor[1]);
-      result.score=[result.sheets.length,result.waste];
-      if(better(result,best))best=result;
+      const xx=offsets([anchor[0],b.x,b.right,...region.map(p=>p[0]),...Array.from({length:12},(_,i)=>b.x+i*w/12)],w);
+      const yy=offsets([anchor[1],b.y,b.bottom,...region.map(p=>p[1]),...Array.from({length:12},(_,i)=>b.y+i*h/12)],h);
+      for(const ox of xx)for(const oy of yy){
+        const result=candidate(region,w,h,ox,oy);tested++;
+        // An open outline is only the photographed portion of a larger ceiling.
+        // Never present a clipped fragment as a usable sheet.
+        result.sheets=result.sheets.filter(s=>s.full).map(s=>({
+          ...s,
+          polygons:[[[[s.x,s.y],[s.x+s.w,s.y],[s.x+s.w,s.y+s.h],[s.x,s.y+s.h],[s.x,s.y]]]],
+          used:s.w*s.h,width:s.w,height:s.h,
+          bounds:{x:s.x,y:s.y,right:s.x+s.w,bottom:s.y+s.h}
+        }));
+        result.used=result.sheets.length*w*h;result.waste=0;result.cutSheets=0;result.trimEdges=0;
+        const nearest=result.sheets.length?Math.min(...result.sheets.map(s=>Math.hypot((s.x+s.w/2-anchor[0])/w,(s.y+s.h/2-anchor[1])/h))):Infinity;
+        // First maximize complete sheets, then bring the nearest one toward the
+        // user's prominent bottom-right ceiling corner.
+        result.score=[-result.sheets.length,nearest];
+        if(better(result,best))best=result;
+      }
     }
-    return {...best,tested:2,open:true,anchor};
+    return {...best,tested,open:true,anchor};
   }
   const api={optimize,visible,candidate,area};if(typeof module!=='undefined')module.exports=api;else root.SheetLayout=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
