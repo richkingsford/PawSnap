@@ -16,7 +16,7 @@ function drawDrywall(c,view='sheets'){
   try{
     if(key!==sheetCacheKey){sheetCache=SheetLayout.optimize(c.plane,width,length);sheetCacheKey=key;}
     const result=sheetCache;
-    summary.textContent=`${result.sheets.length} stock sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut. Best of ${result.tested} layouts; ${result.w}″ × ${result.h}″ orientation.`;
+    summary.textContent=`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`;
     let defs=document.querySelector('#scene defs');if(!defs)defs=svg('defs');
     const pattern=svg('pattern',{id:'cutSheetPattern',width:12,height:12,patternUnits:'userSpaceOnUse',patternTransform:'rotate(35)'},defs);
     svg('rect',{width:12,height:12,fill:'#d98b2488'},pattern);svg('rect',{width:5,height:12,fill:'#ffd071aa'},pattern);

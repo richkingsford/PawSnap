@@ -57,7 +57,7 @@ function render(){
   if(state.region.length>=3&&viewMode()!=='photo')svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
   try{
     const c=validCalibration();
-    if(c){if(viewMode()==='grid')grid(c);state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'Assumed 2-inch boards · estimated scale':'Reference calibrated · verify with check distance';$('status').classList.add('calibrated');
+    if(c){if(viewMode()==='grid')grid(c);else{$('gridValue').textContent='Off';$('gridNote').textContent='Choose Grid view';}state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'2-inch scale · estimated':'Calibrated · estimated';$('status').classList.add('calibrated');
       c.plane.forEach((p,i)=>{const e=document.createElement('span');e.textContent=`Edge ${i+1}: ≈ ${G.distance(p,c.plane[(i+1)%c.plane.length]).toFixed(1)}″`;$('edges').append(e);});
       if(state.segment.length===2){const [a,b]=state.segment.map(p=>G.project(c.inverse,p)),d=G.distance(a,b);$('distance').textContent=`≈ ${d.toFixed(1)}″`;label(state.segment[1],`≈ ${d.toFixed(1)}″`,'#89e2ff');const expected=Number($('checkLength').value);if(expected>0)$('checkResult').textContent=`Check difference: ${(d-expected).toFixed(1)}″ (${(Math.abs(d-expected)/expected*100).toFixed(1)}%). This checks one segment, not overall accuracy.`;}
     }
@@ -70,10 +70,10 @@ function render(){
     const name=key==='reference'?'ABCD'[i]:key==='region'?String(i+1):key==='widths'?['W1a','W1b','W2a','W2b'][i]:['P','Q'][i];
     svg('circle',{cx:p[0],cy:p[1],r:key==='widths'?Math.max(3,state.image.width/140):Math.max(6,state.image.width/70),fill:color,stroke:'#202820','stroke-width':2,class:'point','data-key':key,'data-index':i,tabindex:0,role:'button','aria-label':`${key} point ${name}. Arrow keys move; Shift moves ten pixels.`});if(key!=='widths')label(p,name,color);
   });
-  $('referenceInfo').textContent=state.reference.length===4?'A–B = width; B–C = depth. Drag corners or focus a handle and use arrow keys.':`${state.reference.length}/4 reference corners marked.`;
-  $('boardControls').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
-  $('boardInfo').textContent=`${state.widths.length}/4 width endpoints marked. ${state.starter?'This sample uses approximate hand-placed starter marks. Inspect and adjust them at higher zoom.':''}`;
-  const messages={edit:boardMode()?'Scale assumes each pink segment spans a 2-inch board face. Adjust the yellow framing rectangle and pink width endpoints to match the photo.':'Drag the yellow reference corners and green boundary handles. Zoom in for precise placement. Start by marking a measured reference rectangle.',boards:`Board ${state.widths.length<2?'1':'2'}: click the ${state.widths.length%2?'opposite':'first'} edge of its 2-inch face.${state.widths.length>=2?' Use a board running in a different direction.':''}`,reference:`Click reference corner ${'ABCD'[state.reference.length]||'A'} on the ceiling. Follow the rectangle perimeter A → B → C → D.`,boundary:`${state.region.length} outline points. Continue around the visible ceiling, then select Finish outline.`,measure:`Click ${state.segment.length?'the second':'the first'} point inside the traced ceiling to measure a distance on its plane.`};
+  $('referenceInfo').textContent=state.reference.length===4?'4/4 corners · drag to adjust':`${state.reference.length}/4 corners`;
+  $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
+  $('boardInfo').textContent=`${state.widths.length}/4 width points${state.starter?' · starter marks — adjust as needed':''}`;
+  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
   $('measure').disabled=!state.calibration;$('finish').disabled=state.mode!=='boundary'||state.region.length<3;$('undo').disabled=!['boundary','reference','measure','boards'].includes(state.mode);
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
