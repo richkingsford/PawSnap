@@ -7,22 +7,25 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
-function drawDrywall(c){
+function drawDrywall(c,view='sheets'){
   const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('sheetCuts');
-  summary.textContent=selected==='none'?'Measurement grid only.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
-  if(selected==='none'||!c)return;
+  summary.textContent=view!=='sheets'?'Switch to Virtual sheets to see the optimized layout.':selected==='none'?'No drywall sheet selected. Choose a sheet size to create a layout.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
+  if(view!=='sheets'||selected==='none'||!c)return;
   const [width,length]=selected.split('x').map(Number),key=JSON.stringify([c.plane,width,length]);
   if(state.drag){summary.textContent='Adjusting reference… release to update sheet layout.';return;}
   try{
     if(key!==sheetCacheKey){sheetCache=SheetLayout.optimize(c.plane,width,length);sheetCacheKey=key;}
     const result=sheetCache;
     summary.textContent=`${result.sheets.length} stock sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut. Best of ${result.tested} layouts; ${result.w}″ × ${result.h}″ orientation.`;
+    let defs=document.querySelector('#scene defs');if(!defs)defs=svg('defs');
+    const pattern=svg('pattern',{id:'cutSheetPattern',width:12,height:12,patternUnits:'userSpaceOnUse',patternTransform:'rotate(35)'},defs);
+    svg('rect',{width:12,height:12,fill:'#d98b2488'},pattern);svg('rect',{width:5,height:12,fill:'#ffd071aa'},pattern);
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
     for(const s of result.sheets){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
-      svg('path',{d,fill:s.full?'#8ad8ff55':'#ffc76c66',stroke:s.full?'#b6e9ff':'#ffd28e','stroke-width':2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
+      svg('path',{d,fill:s.full?'#3caeea88':'url(#cutSheetPattern)',stroke:s.full?'#d6f3ff':'#ffae35','stroke-width':s.full?2:3,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
       const center=sheetLabelPoint(s.polygons);
-      label(G.project(c.forward,center),`S${s.id}`,'#ffffff',group);
+      label(G.project(c.forward,center),`${s.full?'FULL':'CUT'} S${s.id}`,s.full?'#ffffff':'#fff2d6',group);
       const row=document.createElement('div');row.className='sheet-cut-row';const desc=document.createElement('span');
       desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':s.rectangular?`Cut to ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″`:`Custom trim · ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″ bounds`} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
       const button=document.createElement('button');button.textContent='Cut outline';button.setAttribute('aria-label',`Download cut outline for sheet S${s.id}`);button.onclick=()=>downloadSheetOutline(s);

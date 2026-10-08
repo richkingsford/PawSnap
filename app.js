@@ -9,6 +9,8 @@ const samples=[
 ];
 const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
+const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
+const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
 function svg(tag,attrs={},parent=$('scene')){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.appendChild(e);return e;}
 function line(a,b,color,width=1,parent=$('scene')){return svg('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:color,'stroke-width':width,class:'grid-line'},parent);}
 function label(p,text,color='#ecffda',parent=$('scene')){const e=svg('text',{x:p[0]+7,y:p[1]-8,fill:color,'font-size':Math.max(11,state.image.width/45),'paint-order':'stroke',stroke:'#182218','stroke-width':3,'stroke-linejoin':'round','font-family':'monospace'},parent);e.textContent=text;return e;}
@@ -52,19 +54,19 @@ function render(){
   if(!state.image)return;
   const scene=$('scene');scene.replaceChildren();scene.setAttribute('viewBox',`0 0 ${state.image.width} ${state.image.height}`);scene.style.width=`${Number($('zoom').value)*100}%`;
   svg('image',{href:state.image.src,x:0,y:0,width:state.image.width,height:state.image.height});resetReadings();
-  if(state.region.length>=3)svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
+  if(state.region.length>=3&&viewMode()!=='photo')svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
   try{
     const c=validCalibration();
-    if(c){grid(c);state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'Assumed 2-inch boards · estimated scale':'Reference calibrated · verify with check distance';$('status').classList.add('calibrated');
+    if(c){if(viewMode()==='grid')grid(c);state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'Assumed 2-inch boards · estimated scale':'Reference calibrated · verify with check distance';$('status').classList.add('calibrated');
       c.plane.forEach((p,i)=>{const e=document.createElement('span');e.textContent=`Edge ${i+1}: ≈ ${G.distance(p,c.plane[(i+1)%c.plane.length]).toFixed(1)}″`;$('edges').append(e);});
       if(state.segment.length===2){const [a,b]=state.segment.map(p=>G.project(c.inverse,p)),d=G.distance(a,b);$('distance').textContent=`≈ ${d.toFixed(1)}″`;label(state.segment[1],`≈ ${d.toFixed(1)}″`,'#89e2ff');const expected=Number($('checkLength').value);if(expected>0)$('checkResult').textContent=`Check difference: ${(d-expected).toFixed(1)}″ (${(Math.abs(d-expected)/expected*100).toFixed(1)}%). This checks one segment, not overall accuracy.`;}
     }
   }catch(e){$('error').textContent=e.message;state.calibration=null;}
-  drawDrywall(state.calibration);
-  if(state.reference.length>1)svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
+  drawDrywall(viewMode()==='sheets'?state.calibration:null,viewMode());
+  if(state.reference.length>1&&viewMode()!=='photo')svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
   if(state.segment.length===2)line(...state.segment,'#80dcff',2);
-  if(boardMode())for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
-  for(const [key,color] of [['region','#c7f36a'],['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
+  if(boardMode()&&viewMode()!=='photo')for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
+  if(viewMode()!=='photo')for(const [key,color] of [['region','#c7f36a'],['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
     const name=key==='reference'?'ABCD'[i]:key==='region'?String(i+1):key==='widths'?['W1a','W1b','W2a','W2b'][i]:['P','Q'][i];
     svg('circle',{cx:p[0],cy:p[1],r:key==='widths'?Math.max(3,state.image.width/140):Math.max(6,state.image.width/70),fill:color,stroke:'#202820','stroke-width':2,class:'point','data-key':key,'data-index':i,tabindex:0,role:'button','aria-label':`${key} point ${name}. Arrow keys move; Shift moves ten pixels.`});if(key!=='widths')label(p,name,color);
   });
@@ -77,12 +79,13 @@ function render(){
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
 }
 async function loadPhoto(url,name,region=[],starter=null){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
 for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength'])$(id).addEventListener('input',()=>{if(['refWidth','refDepth'].includes(id))$('confirmed').checked=false;render();});
 $('sheetSize').addEventListener('change',render);
+document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEventListener('change',render));
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
 $('boards').onclick=()=>{state.widths=[];state.segment=[];state.starter=false;state.mode='boards';render();};
 $('reference').onclick=()=>{state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
