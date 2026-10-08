@@ -7,25 +7,29 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
-function drawDrywall(c,view='sheets'){
+function drawDrywall(c,view='sheets',complete=true){
   const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('sheetCuts');
   summary.textContent=view!=='sheets'?'Switch to Virtual sheets to see the optimized layout.':selected==='none'?'No drywall sheet selected. Choose a sheet size to create a layout.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
   if(view!=='sheets'||selected==='none'||!c)return;
   const [width,length]=selected.split('x').map(Number),key=JSON.stringify([c.plane,width,length]);
   if(state.drag){summary.textContent='Adjusting reference… release to update sheet layout.';return;}
   try{
-    if(key!==sheetCacheKey){sheetCache=SheetLayout.optimize(c.plane,width,length);sheetCacheKey=key;}
+    const layoutKey=`${complete?'closed':'open'}:${key}`;
+    if(layoutKey!==sheetCacheKey){sheetCache=complete?SheetLayout.optimize(c.plane,width,length):SheetLayout.visible(c.plane,width,length);sheetCacheKey=layoutKey;}
     const result=sheetCache;
-    summary.textContent=`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`;
+    const sizeLabel=`${width/12}×${length/12}′`;
+    summary.textContent=complete?`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
     let defs=document.querySelector('#scene defs');if(!defs)defs=svg('defs');
     const pattern=svg('pattern',{id:'cutSheetPattern',width:12,height:12,patternUnits:'userSpaceOnUse',patternTransform:'rotate(35)'},defs);
     svg('rect',{width:12,height:12,fill:'#d98b2488'},pattern);svg('rect',{width:5,height:12,fill:'#ffd071aa'},pattern);
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
     for(const s of result.sheets){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
-      svg('path',{d,fill:s.full?'#3caeea88':'url(#cutSheetPattern)',stroke:s.full?'#d6f3ff':'#ffae35','stroke-width':s.full?2:3,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
+      const needsCut=complete&&!s.full;
+      svg('path',{d,fill:needsCut?'url(#cutSheetPattern)':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
       const center=sheetLabelPoint(s.polygons);
-      label(G.project(c.forward,center),`${s.full?'FULL':'CUT'} S${s.id}`,s.full?'#ffffff':'#fff2d6',group);
+      label(G.project(c.forward,center),complete?`${s.full?'FULL':'CUT'} S${s.id}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
+      if(!complete)continue;
       const row=document.createElement('div');row.className='sheet-cut-row';const desc=document.createElement('span');
       desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':s.rectangular?`Cut to ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″`:`Custom trim · ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″ bounds`} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
       const button=document.createElement('button');button.textContent='Cut outline';button.setAttribute('aria-label',`Download cut outline for sheet S${s.id}`);button.onclick=()=>downloadSheetOutline(s);
