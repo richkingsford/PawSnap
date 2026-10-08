@@ -55,7 +55,6 @@ function render(){
   if(!state.image)return;
   const scene=$('scene');scene.replaceChildren();scene.setAttribute('viewBox',`0 0 ${state.image.width} ${state.image.height}`);scene.style.width=`${Number($('zoom').value)*100}%`;
   svg('image',{href:state.image.src,x:0,y:0,width:state.image.width,height:state.image.height});resetReadings();
-  if(state.region.length>=3&&viewMode()!=='photo')svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
   try{
     const c=validCalibration();
     if(c){if(viewMode()==='grid')grid(c);else{$('gridValue').textContent='Off';$('gridNote').textContent='Choose Grid view';}state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'2-inch scale · estimated':'Calibrated · estimated';$('status').classList.add('calibrated');
@@ -64,10 +63,12 @@ function render(){
     }
   }catch(e){$('error').textContent=e.message;state.calibration=null;}
   drawDrywall(viewMode()==='sheets'?state.calibration:null,viewMode(),fullPerimeterVisible());
-  if(state.reference.length>1&&viewMode()!=='photo')svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
-  if(state.segment.length===2)line(...state.segment,'#80dcff',2);
-  if(boardMode()&&viewMode()!=='photo')for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
-  if(viewMode()!=='photo')for(const [key,color] of [['region','#c7f36a'],['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
+  const showGuides=viewMode()==='grid'||state.mode!=='edit'||!state.calibration;
+  if(state.region.length>=3&&viewMode()!=='photo'&&showGuides)svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
+  if(state.reference.length>1&&viewMode()!=='photo'&&showGuides)svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
+  if(state.segment.length===2&&showGuides)line(...state.segment,'#80dcff',2);
+  if(boardMode()&&viewMode()!=='photo'&&showGuides)for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
+  if(viewMode()!=='photo'&&showGuides)for(const [key,color] of [['region','#c7f36a'],['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
     const name=key==='reference'?'ABCD'[i]:key==='region'?String(i+1):key==='widths'?['W1a','W1b','W2a','W2b'][i]:['P','Q'][i];
     svg('circle',{cx:p[0],cy:p[1],r:key==='widths'?Math.max(3,state.image.width/140):Math.max(6,state.image.width/70),fill:color,stroke:'#202820','stroke-width':2,class:'point','data-key':key,'data-index':i,tabindex:0,role:'button','aria-label':`${key} point ${name}. Arrow keys move; Shift moves ten pixels.`});if(key!=='widths')label(p,name,color);
   });

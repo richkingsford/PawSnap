@@ -23,12 +23,15 @@ function drawDrywall(c,view='sheets',complete=true){
     const pattern=svg('pattern',{id:'cutSheetPattern',width:12,height:12,patternUnits:'userSpaceOnUse',patternTransform:'rotate(35)'},defs);
     svg('rect',{width:12,height:12,fill:'#d98b2488'},pattern);svg('rect',{width:5,height:12,fill:'#ffd071aa'},pattern);
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
-    for(const s of result.sheets){
+    const displaySheets=result.sheets.map(s=>{const center=sheetLabelPoint(s.polygons),imagePoint=G.project(c.forward,center);return {...s,center,imagePoint};}).sort((a,b)=>{
+      const score=p=>Math.hypot((state.image.width-p.imagePoint[0])/state.image.width,(state.image.height-p.imagePoint[1])/state.image.height);
+      return score(a)-score(b);
+    }).map((s,i)=>({...s,id:i+1}));
+    for(const s of displaySheets){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'url(#cutSheetPattern)':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      const center=sheetLabelPoint(s.polygons);
-      label(G.project(c.forward,center),complete?`${s.full?'FULL':'CUT'} S${s.id}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
+      label(s.imagePoint,complete?`${s.full?'FULL':'CUT'} S${s.id}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
       if(!complete)continue;
       const row=document.createElement('div');row.className='sheet-cut-row';const desc=document.createElement('span');
       desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':s.rectangular?`Cut to ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″`:`Custom trim · ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″ bounds`} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
