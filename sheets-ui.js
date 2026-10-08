@@ -14,8 +14,13 @@ function drawDrywall(c,view='sheets',complete=true){
   const [width,length]=selected.split('x').map(Number),key=JSON.stringify([c.plane,width,length]);
   if(state.drag){summary.textContent='Adjusting reference… release to update sheet layout.';return;}
   try{
-    const layoutKey=`${complete?'closed':'open'}:${key}`;
-    if(layoutKey!==sheetCacheKey){sheetCache=complete?SheetLayout.optimize(c.plane,width,length):SheetLayout.visible(c.plane,width,length);sheetCacheKey=layoutKey;}
+    const anchorIndex=complete?-1:state.region.reduce((best,p,i)=>{
+      const score=q=>Math.hypot((state.image.width-q[0])/state.image.width,(state.image.height-q[1])/state.image.height);
+      return score(p)<score(state.region[best])?i:best;
+    },0);
+    const anchor=complete?null:c.plane[anchorIndex];
+    const layoutKey=`${complete?'closed':'open'}:${key}:${anchor?anchor.join(','):''}`;
+    if(layoutKey!==sheetCacheKey){sheetCache=complete?SheetLayout.optimize(c.plane,width,length):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
     summary.textContent=complete?`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;

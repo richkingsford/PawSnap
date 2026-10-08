@@ -43,14 +43,14 @@
     }
     return {...best,tested};
   }
-  function visible(region,width,length){
+  function visible(region,width,length,anchor=[0,0]){
     let best=null;
     for(const [w,h] of [[width,length],[length,width]]){
-      const result=candidate(region,w,h,0,0);
+      const result=candidate(region,w,h,anchor[0],anchor[1]);
       result.score=[result.sheets.length,result.waste];
       if(better(result,best))best=result;
     }
-    return {...best,tested:2,open:true};
+    return {...best,tested:2,open:true,anchor};
   }
   const api={optimize,visible,candidate,area};if(typeof module!=='undefined')module.exports=api;else root.SheetLayout=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
