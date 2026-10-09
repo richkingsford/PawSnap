@@ -132,12 +132,13 @@ function render(){
   }catch(e){$('error').textContent=e.message;state.calibration=null;}
   drawDrywall(viewMode()==='sheets'?state.calibration:null,viewMode(),fullPerimeterVisible());
   const showGuides=viewMode()==='grid'||state.mode!=='edit'||!state.calibration;
-  if(state.region.length>=3&&viewMode()!=='photo'&&showGuides)svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
+  if(state.region.length>=3&&viewMode()!=='photo')svg('polygon',{points:pointString(state.region),fill:'#c7f36a08',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
   if(state.calibration&&viewMode()!=='photo'&&showGuides)state.region.forEach((p,i)=>{const q=state.region[(i+1)%state.region.length],a=G.project(state.calibration.inverse,p),b=G.project(state.calibration.inverse,q),mid=[(p[0]+q[0])/2,(p[1]+q[1])/2],tag=label(mid,`${G.distance(a,b).toFixed(1)}″`,'#c7f36a');tag.setAttribute('text-anchor','middle');tag.setAttribute('data-edge-length',String(i));});
   if(state.reference.length>1&&viewMode()!=='photo'&&showGuides)svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
   if(state.segment.length===2&&showGuides)line(...state.segment,'#80dcff',2);
   if(boardMode()&&viewMode()!=='photo'&&showGuides)for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
-  if(viewMode()!=='photo'&&showGuides)for(const [key,color] of [['region','#c7f36a'],['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
+  if(viewMode()!=='photo')state.region.forEach((p,i)=>{svg('circle',{cx:p[0],cy:p[1],r:Math.max(6,state.image.width/70),fill:'#c7f36a',stroke:'#202820','stroke-width':2,class:'point','data-key':'region','data-index':i,tabindex:0,role:'button','aria-label':`region point ${i+1}. Arrow keys move; Shift moves ten pixels.`});label(p,String(i+1),'#c7f36a');});
+  if(viewMode()!=='photo'&&showGuides)for(const [key,color] of [['reference','#ffce66'],['segment','#80dcff'],...(boardMode()?[['widths','#ff8fdf']]:[])])state[key].forEach((p,i)=>{
     const name=key==='reference'?'ABCD'[i]:key==='region'?String(i+1):key==='widths'?['W1a','W1b','W2a','W2b'][i]:['P','Q'][i];
     svg('circle',{cx:p[0],cy:p[1],r:key==='widths'?Math.max(3,state.image.width/140):Math.max(6,state.image.width/70),fill:color,stroke:'#202820','stroke-width':2,class:'point','data-key':key,'data-index':i,tabindex:0,role:'button','aria-label':`${key} point ${name}. Arrow keys move; Shift moves ten pixels.`});if(key!=='widths')label(p,name,color);
   });

@@ -24,6 +24,8 @@ If both edited lengths cannot geometrically meet while their neighboring dots re
 
 The Calculate popup always assumes 90° corners. It selects a geometrically valid connected line, keeps that field editable, and immediately calculates the other length from the fixed neighbor spacing. Clicking the gray field switches which leg is editable and recalculates its partner. Apply moves only the selected point to the nearest 90° solution. The editable leg must be greater than zero and shorter than the fixed neighbor spacing; validation displays the exact interval and blocks invalid values.
 
+The green ceiling boundary and its corner handles remain visible and clickable in Sheets and Grid views after calibration or dimension entry, so Calculate and point adjustment never disappear after Apply. Photo view intentionally hides overlays.
+
 The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
 Once dimensions or reference marks exist, calibration remains live while green outline points are adjusted. Manual length edits therefore apply immediately without a separate finishing step.
