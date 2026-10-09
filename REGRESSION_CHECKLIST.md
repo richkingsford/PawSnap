@@ -26,9 +26,9 @@ Run this checklist after every interaction or geometry change.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
-- [ ] Open **Change all points** and confirm every outline point has X/Y inch inputs. Change one coordinate, apply, and confirm only that point moves.
-- [ ] Clear a changed all-points value and confirm specific numeric-position validation appears and no point moves.
-- [ ] Check **90° angles only**. Confirm exactly one length field is editable and the other is visibly grayed.
+- [ ] Open **Change all points** and confirm there is exactly one inch-length input for every outline line. Change one line, apply, and confirm only its ending point moves and the next corner remains 90°.
+- [ ] Clear a changed all-lines value or enter an impossible 90° length and confirm specific validation appears and no point moves.
+- [ ] Confirm the popup shows the brief **90° corners assumed** note, with no checkbox. Exactly one connected-line field is editable and the other is visibly grayed.
 - [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
 - [ ] Click the grayed field. Confirm it becomes editable and the previously active field becomes grayed.
 - [ ] Enter a valid active-leg length and confirm the other leg calculates automatically; Apply must move only the selected point and produce a 90° angle.
