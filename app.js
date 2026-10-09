@@ -38,7 +38,10 @@ function validCalibration(){
   if(state.reference.length!==4)return null;
   if(boardMode()&&state.widths.length!==4)return null;
   if(!boardMode()&&(!$('confirmed').checked||!$('refWidth').value||!$('refDepth').value))return null;
-  if(state.mode==='boundary'||state.region.length<3)return null;
+  // Three or more outline points are enough to use the already established
+  // reference transform. Keep calibration live while Trace outline is active
+  // so point-length edits work before the user presses Finish.
+  if(state.region.length<3)return null;
   if(!G.simple(state.region))throw Error('Ceiling outline crosses itself or has zero area. Adjust or retrace its points.');
   return boardMode()?G.calibrateBoards(state.reference,state.widths,2,state.region):G.calibrate(state.reference,Number($('refWidth').value),Number($('refDepth').value),state.region);
 }

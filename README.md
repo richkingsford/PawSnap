@@ -20,6 +20,8 @@ Clicking a green ceiling-outline point, or releasing it after a drag, opens a po
 
 The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
+Once the rectangular reference and board widths exist, calibration remains live as soon as a traced outline has three points. Manual length edits therefore work while **Trace outline** is still active; pressing **Finish** is not a prerequisite.
+
 The photo workspace has no nested scrolling or clipping container. Its canvas is constrained to the available screen height, and point menus automatically flip left/up near an edge so both the action menu and expanded length editor remain visible.
 
 ## Accuracy contract
