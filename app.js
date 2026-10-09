@@ -46,8 +46,7 @@ function validCalibration(){
   return boardMode()?G.calibrateBoards(state.reference,state.widths,2,state.region):G.calibrate(state.reference,Number($('refWidth').value),Number($('refDepth').value),state.region);
 }
 function pointEditCalibration(){
-  if(state.reference.length!==4)throw Error(`Mark corners needs 4 dots (${state.reference.length}/4 complete).`);
-  if(state.widths.length!==4)throw Error(`Mark board widths needs 4 purple dots (${state.widths.length}/4 complete).`);
+  if(state.reference.length!==4||state.widths.length!==4)throw Error('Add scale marks to calculate inch lengths.');
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
 }
 function validatePointLengths(){
@@ -196,16 +195,15 @@ $('addPoint').onclick=()=>{
   state.region.splice(insertionIndex,0,point);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
 };
 function openAllPointsEditor(message='Each field is one ceiling-outline line in inches.'){
-  const list=$('allPointsList');list.replaceChildren();let c;
-  try{c=pointEditCalibration();}catch(e){$('allPointsStatus').textContent=e.message;$('pointActions').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);return;}
-  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]),row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.value=G.distance(a,b).toFixed(1);input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');$('allPointsStatus').textContent='Apply moves the ending point of each line you changed.';});label.append(input);row.append(label);list.append(row);});
-  $('allPointsStatus').textContent=message;$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
+  const list=$('allPointsList');list.replaceChildren();let c=null;try{c=pointEditCalibration();}catch(e){}
+  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.placeholder='Enter inches';if(c){const a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]);input.value=G.distance(a,b).toFixed(1);}input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');if(!c){$('allPointsStatus').textContent='Lengths are ready to enter; add scale marks before applying.';return;}const value=Number(input.value),following=(i+2)%state.region.length,a=G.project(c.inverse,state.region[i]),b=G.project(c.inverse,state.region[following]),base=G.distance(a,b),partner=list.querySelector(`input[data-index="${next}"]`);if(value>0&&value<base&&partner){partner.value=Math.sqrt(base**2-value**2).toFixed(1);partner.dataset.calculated='true';$('allPointsStatus').textContent=`Line ${next+1} calculated automatically for a 90° corner.`;}else $('allPointsStatus').textContent=`Line ${i+1} must be between 0″ and ${base.toFixed(1)}″.`;});label.append(input);row.append(label);list.append(row);});
+  $('allPointsStatus').textContent=c?message:'Enter any known line lengths. Add scale marks before applying.';$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
 }
 $('changeAllPoints').onclick=openAllPointsEditor;
 $('cancelAllPoints').onclick=()=>{$('allPointsEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyAllPoints').onclick=()=>{
   try{
-    const c=pointEditCalibration(),next=state.region.map(p=>[...p]),changed=new Set();
+    let c;try{c=pointEditCalibration();}catch(e){$('allPointsStatus').textContent='Add scale marks before applying inch lengths.';return;}const next=state.region.map(p=>[...p]),changed=new Set();
     for(const input of $('allPointsList').querySelectorAll('input[data-dirty="true"]')){const value=Number(input.value),i=Number(input.dataset.index),target=(i+1)%next.length,following=(i+2)%next.length,anchorPlane=G.project(c.inverse,next[i]),followingPlane=G.project(c.inverse,next[following]),base=G.distance(anchorPlane,followingPlane);if(input.value.trim()===''||!Number.isFinite(value)||value<=0||value>=base){const message=`Line ${i+1} must be greater than 0″ and less than ${base.toFixed(1)}″ to keep the next corner at 90°.`;input.setCustomValidity(message);input.setAttribute('aria-invalid','true');input.reportValidity();throw Error(message);}const other=Math.sqrt(base**2-value**2);next[target]=G.solvePointFromLengths(c.inverse,c.forward,next[target],next[i],next[following],value,other);changed.add(target);}
     if(!changed.size){$('allPointsStatus').textContent='Change at least one line first.';return;}if(!G.simple(next))throw Error('Those lengths make the ceiling outline cross itself. Change one or more lines.');
     state.region=next;fitStageToPoints();render();openAllPointsEditor(`Moved ${changed.size} ending point${changed.size===1?'':'s'}; all other points stayed fixed.`);
