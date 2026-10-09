@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -18,6 +18,14 @@ function label(p,text,color='#ecffda',parent=$('scene')){const e=svg('text',{x:p
 function pointString(p){return p.map(a=>a.join(',')).join(' ');}
 function inside([x,y],polygon){let hit=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){const [a,b]=polygon[i],[c,d]=polygon[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)hit=!hit;}return hit;}
 function resetReadings(){state.calibration=null;$('area').textContent=$('distance').textContent=$('gridValue').textContent='—';$('gridNote').textContent='Requires calibration';$('edges').replaceChildren();$('checkResult').textContent='Use a second known distance to check calibration.';$('status').textContent='Uncalibrated · no inch scale';$('status').classList.remove('calibrated');$('error').textContent='';}
+function fitStageToPoints(){
+  if(!state.image)return;
+  const w=state.image.width,h=state.image.height,baseX=w*.22,baseY=h*.22,extraX=w*.08,extraY=h*.08;
+  const points=[...state.reference,...state.region];
+  const minX=Math.min(-baseX,...points.map(p=>p[0]-extraX)),maxX=Math.max(w+baseX,...points.map(p=>p[0]+extraX));
+  const minY=Math.min(-baseY,...points.map(p=>p[1]-extraY)),maxY=Math.max(h+baseY,...points.map(p=>p[1]+extraY));
+  state.viewBox=[minX,minY,maxX-minX,maxY-minY];
+}
 function syncEdgeControls(){
   const select=$('edgeSelect'),prior=select.value;select.replaceChildren();
   state.region.forEach((_,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} → ${(i+1)%state.region.length+1}`;select.append(option);});
@@ -61,7 +69,7 @@ function grid(c){
 }
 function render(){
   if(!state.image)return;
-  const scene=$('scene');scene.replaceChildren();scene.setAttribute('viewBox',`0 0 ${state.image.width} ${state.image.height}`);scene.style.width=`${Number($('zoom').value)*100}%`;
+  const scene=$('scene');scene.replaceChildren();if(!state.viewBox)fitStageToPoints();scene.setAttribute('viewBox',state.viewBox.join(' '));scene.style.width=`${Number($('zoom').value)*100}%`;
   svg('image',{href:state.image.src,x:0,y:0,width:state.image.width,height:state.image.height});resetReadings();
   try{
     const c=validCalibration();
@@ -90,7 +98,7 @@ function render(){
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
 }
 async function loadPhoto(url,name,region=[],starter=null){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
@@ -111,6 +119,7 @@ $('applyEdgeLength').onclick=()=>{
     const start=Number($('edgeSelect').value),end=(start+1)%state.region.length,keepStart=$('edgeAnchor').value==='start';
     const anchor=keepStart?start:end,moving=keepStart?end:start,length=Number($('edgeLength').value);
     state.region[moving]=G.extendPoint(state.calibration.inverse,state.calibration.forward,state.region[anchor],state.region[moving],length);
+    fitStageToPoints();
     render();
   }catch(e){$('error').textContent=e.message;}
 };
@@ -124,7 +133,7 @@ $('scene').addEventListener('pointerdown',e=>{
   render();
 });
 $('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;state[state.drag.key][state.drag.index]=p;render();});
-for(const type of ['pointerup','pointercancel','lostpointercapture'])$('scene').addEventListener(type,()=>{if(state.drag){state.drag=null;render();}});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])$('scene').addEventListener(type,()=>{if(state.drag){state.drag=null;fitStageToPoints();render();}});
 $('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,raw=[old[0]+m[0]*step,old[1]+m[1]*step],mayLeave=key==='region'||key==='reference',p=mayLeave?raw:[Math.max(0,Math.min(state.image.width,raw[0])),Math.max(0,Math.min(state.image.height,raw[1]))];if(key==='segment'&&!inside(p,state.region))return;state[key][index]=p;render();const moved=$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`);if(moved)moved.focus();});
 $('export').onclick=async()=>{
   try{const clone=$('scene').cloneNode(true),canvas=document.createElement('canvas');canvas.width=state.image.width;canvas.height=state.image.height;const ctx=canvas.getContext('2d');ctx.drawImage(state.image,0,0);clone.querySelector('image').setAttribute('href',canvas.toDataURL('image/png'));clone.setAttribute('width',canvas.width);clone.setAttribute('height',canvas.height);clone.removeAttribute('style');const text=document.createElementNS(NS,'text');text.setAttribute('x',10);text.setAttribute('y',canvas.height-16);text.setAttribute('font-size',12);text.setAttribute('fill','white');text.setAttribute('stroke','#162016');text.setAttribute('paint-order','stroke');text.setAttribute('stroke-width',3);text.textContent=state.calibration?`${boardMode()?'ASSUMED 2-INCH BOARD WIDTHS':`Reference ${$('refWidth').value} × ${$('refDepth').value} in`} | grid ${$('spacing').value} in | Estimates; accuracy not verified`:'UNCALIBRATED — NO INCH SCALE';clone.append(text);const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'}));const link=document.createElement('a');link.href=url;link.download='ceiling-measurement.svg';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('error').textContent=`Export failed: ${e.message}`;}

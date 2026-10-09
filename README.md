@@ -14,7 +14,7 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 4. View 1-, 6-, or 12-inch grid lines; labels appear every 12 inches. X/Y coordinates originate at A and can be negative beyond the reference.
 5. Measure two points on the plane, inspect selected area and edge lengths, and compare a second measured distance to check calibration. Export an SVG with the photo, annotations, scale status and accuracy qualification embedded.
 
-Ceiling corners may sit outside a cropped photo. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
+Ceiling corners may sit outside a cropped photo. The photo is inset inside a padded work area, and that area expands to keep off-photo handles visible. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
 
 ## Accuracy contract
 
