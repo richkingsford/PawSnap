@@ -4,7 +4,7 @@ const samples=[
   {name:'Open joists',url:'samples/framing-room.jpg',region:[[0,.21],[1,.21],[1,.42],[.72,.49],[0,.49]]},
   {name:'Long room',url:'samples/framing-wide.jpg',region:[[0,0],[1,0],[.85,.475],[.46,.475],[0,.39]]},
   {name:'Basement ducts',url:'samples/basement-ducts.png',region:[[0,0],[1,0],[1,.57],[0,.46]]},
-  {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
+  {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],confidentExtraCorners:true,starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
 const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
@@ -12,6 +12,10 @@ const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
 const fullPerimeterVisible=()=>state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1);
+function conservativeCorners(points,confidentExtraCorners=false){
+  const result=points.map(p=>[...p]);if(confidentExtraCorners)return result;
+  while(result.length>4){let remove=0,smallest=Infinity;for(let i=0;i<result.length;i++){const a=result[(i+result.length-1)%result.length],p=result[i],b=result[(i+1)%result.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1,distance=Math.abs(dy*p[0]-dx*p[1]+b[0]*a[1]-b[1]*a[0])/length;if(distance<smallest){smallest=distance;remove=i;}}result.splice(remove,1);}return result;
+}
 function svg(tag,attrs={},parent=$('scene')){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.appendChild(e);return e;}
 function line(a,b,color,width=1,parent=$('scene')){return svg('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:color,'stroke-width':width,class:'grid-line'},parent);}
 function label(p,text,color='#ecffda',parent=$('scene')){const e=svg('text',{x:p[0]+7,y:p[1]-8,fill:color,'font-size':Math.max(11,state.image.width/45),'paint-order':'stroke',stroke:'#182218','stroke-width':3,'stroke-linejoin':'round','font-family':'monospace'},parent);e.textContent=text;return e;}
@@ -144,10 +148,10 @@ function render(){
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
   requestAnimationFrame(positionPointMenu);
 }
-async function loadPhoto(url,name,region=[],starter=null){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=conservativeCorners(region,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
-samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter);$('samples').append(b);});
+samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
 for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength'])$(id).addEventListener('input',()=>{if(['refWidth','refDepth'].includes(id))$('confirmed').checked=false;render();});
 $('sheetSize').addEventListener('change',render);
@@ -227,4 +231,4 @@ $('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-
 $('export').onclick=async()=>{
   try{const clone=$('scene').cloneNode(true),canvas=document.createElement('canvas');canvas.width=state.image.width;canvas.height=state.image.height;const ctx=canvas.getContext('2d');ctx.drawImage(state.image,0,0);clone.querySelector('image').setAttribute('href',canvas.toDataURL('image/png'));clone.setAttribute('width',canvas.width);clone.setAttribute('height',canvas.height);clone.removeAttribute('style');const text=document.createElementNS(NS,'text');text.setAttribute('x',10);text.setAttribute('y',canvas.height-16);text.setAttribute('font-size',12);text.setAttribute('fill','white');text.setAttribute('stroke','#162016');text.setAttribute('paint-order','stroke');text.setAttribute('stroke-width',3);text.textContent=state.calibration?`${boardMode()?'ASSUMED 2-INCH BOARD WIDTHS':`Reference ${$('refWidth').value} × ${$('refDepth').value} in`} | grid ${$('spacing').value} in | Estimates; accuracy not verified`:'UNCALIBRATED — NO INCH SCALE';clone.append(text);const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'}));const link=document.createElement('a');link.href=url;link.download='ceiling-measurement.svg';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('error').textContent=`Export failed: ${e.message}`;}
 };
-loadPhoto(samples[3].url,samples[3].name,samples[3].region,samples[3].starter);
+loadPhoto(samples[3].url,samples[3].name,samples[3].region,samples[3].starter,samples[3].confidentExtraCorners);

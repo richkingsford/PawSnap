@@ -10,7 +10,7 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 
 1. Load a sample or photo. The entire source image is preserved; zoom and scroll for precise marking.
 2. Default board mode assumes the marked board faces are exactly **2 inches wide**, as requested by the user. Mark A, B, C, D around a real framing rectangle on the selected plane, then mark two edge-to-edge board widths in different directions on that same plane. No rectangle dimensions need to be entered. Two widths are needed to resolve both axes without guessing camera parameters. They must be widths, not gaps or framing spacing.
-3. Alternatively select Measured rectangle and enter measured A–B and B–C lengths. Confirm those dimensions. Trace a simple ceiling polygon. Sample outlines are manually prepared approximations of visible regions, not automatically detected room boundaries.
+3. Alternatively select Measured rectangle and enter measured A–B and B–C lengths. Confirm those dimensions. Trace a simple ceiling polygon. Suggested sample outlines are manually prepared approximations, not automatically detected room boundaries. They default to four corners; extra corners are retained only for samples with a clearly visible additional boundary turn.
 4. View 1-, 6-, or 12-inch grid lines; labels appear every 12 inches. X/Y coordinates originate at A and can be negative beyond the reference.
 5. Measure two points on the plane, inspect selected area and edge lengths, and compare a second measured distance to check calibration. Export an SVG with the photo, annotations, scale status and accuracy qualification embedded.
 

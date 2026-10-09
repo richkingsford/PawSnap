@@ -25,6 +25,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] **Mark corners** leaves all four reference handles visible and draggable, including outside the photo.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
+- [ ] Open every sample and confirm suggested outlines normally contain four green corners. More than four may appear only on a sample explicitly marked as a confident extra-corner case.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
 - [ ] Open **Change all points** with and without completed scale marks. Confirm there is exactly one inch-length input for every outline line and no missing-corners message replaces the fields.
 - [ ] On a calibrated photo, change one line and confirm its connected line recalculates immediately. Apply and confirm only the shared ending point moves and the corner remains 90°.
