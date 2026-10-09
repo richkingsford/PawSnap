@@ -30,9 +30,9 @@ function positionPointMenu(){
   const menu=$('pointMenu'),index=state.pointMenuIndex,circle=$('scene').querySelector(`[data-key="region"][data-index="${index}"]`);
   if(index===null||!circle){menu.hidden=true;return;}
   const dot=circle.getBoundingClientRect(),viewport=document.querySelector('.viewport').getBoundingClientRect();
-  menu.style.left=`${dot.left+dot.width/2-viewport.left+document.querySelector('.viewport').scrollLeft+10}px`;
-  menu.style.top=`${dot.top+dot.height/2-viewport.top+document.querySelector('.viewport').scrollTop+10}px`;
-  menu.hidden=false;
+  menu.hidden=false;const x=dot.left+dot.width/2-viewport.left,y=dot.top+dot.height/2-viewport.top,w=menu.offsetWidth,h=menu.offsetHeight;
+  menu.style.left=`${Math.max(6,x+(x+10+w<=viewport.width?10:-w-10))}px`;
+  menu.style.top=`${Math.max(6,y+(y+10+h<=viewport.height?10:-h-10))}px`;
 }
 function validCalibration(){
   if(state.reference.length!==4)return null;

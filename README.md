@@ -20,6 +20,8 @@ Clicking a green ceiling-outline point, or releasing it after a drag, opens a po
 
 The Calculate editor always opens. Before calibration is complete it identifies the missing Mark corners / Mark board widths prerequisite in the popup and disables applying lengths; after calibration it preloads the two current measurements.
 
+The photo workspace has no nested scrolling or clipping container. Its canvas is constrained to the available screen height, and point menus automatically flip left/up near an edge so both the action menu and expanded length editor remain visible.
+
 ## Accuracy contract
 
 An ordinary single image has no absolute physical scale. Board mode supplies scale through the user's explicit 2-inch assumption, not through verified physical measurements. The Ceiling battens sample opens with approximate hand-placed framing and width marks and an estimated inch grid. Other samples start with no reference marks. These starter marks are editable and are not automatic board detection. No standard framing spacing or camera focal length is assumed.
