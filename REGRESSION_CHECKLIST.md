@@ -26,6 +26,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
 - [ ] Check **90° angles only**. Confirm exactly one length field is editable and the other is visibly grayed.
+- [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
 - [ ] Click the grayed field. Confirm it becomes editable and the previously active field becomes grayed.
 - [ ] Enter a valid active-leg length and confirm the other leg calculates automatically; Apply must move only the selected point and produce a 90° angle.
 - [ ] Enter a leg length equal to or greater than the fixed neighbor spacing and confirm validation shows the exact valid interval and blocks Apply.

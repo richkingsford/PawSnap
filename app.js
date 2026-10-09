@@ -80,6 +80,15 @@ function activateRightAngleField(which){
   state.rightAngleActive=which;const previous=$('previousEdgeLength'),next=$('nextEdgeLength');previous.readOnly=which!=='previous';next.readOnly=which!=='next';
   state.pointLengthDirty={previous:which==='previous',next:which==='next'};validatePointLengths();
 }
+function chooseRightAngleField(){
+  try{
+    const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length,previous=(i+n-1)%n,next=(i+1)%n;
+    const p=G.project(c.inverse,state.region[previous]),q=G.project(c.inverse,state.region[next]),base=G.distance(p,q),previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
+    if(previousLength>0&&previousLength<base)return 'previous';
+    if(nextLength>0&&nextLength<base)return 'next';
+    const choice=previousLength<=nextLength?'previous':'next',input=choice==='previous'?$('previousEdgeLength'):$('nextEdgeLength');input.value=(base/Math.SQRT2).toFixed(1);return choice;
+  }catch(e){$('pointEditorStatus').textContent=e.message;return 'previous';}
+}
 function grid(c){
   const xs=c.plane.map(p=>p[0]),ys=c.plane.map(p=>p[1]);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),step=Number($('spacing').value);
@@ -163,7 +172,7 @@ $('calculatePoint').onclick=()=>{
   state.pointLengthDirty={previous:false,next:false};
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
-$('rightAngleOnly').addEventListener('change',()=>{if($('rightAngleOnly').checked)activateRightAngleField(state.rightAngleActive);else{$('previousEdgeLength').readOnly=$('nextEdgeLength').readOnly=false;state.pointLengthDirty={previous:false,next:false};validatePointLengths();}});
+$('rightAngleOnly').addEventListener('change',()=>{if($('rightAngleOnly').checked)activateRightAngleField(chooseRightAngleField());else{$('previousEdgeLength').readOnly=$('nextEdgeLength').readOnly=false;state.pointLengthDirty={previous:false,next:false};validatePointLengths();}});
 $('previousEdgeLength').addEventListener('click',()=>{if($('rightAngleOnly').checked&&state.rightAngleActive!=='previous'){activateRightAngleField('previous');$('previousEdgeLength').select();}});$('nextEdgeLength').addEventListener('click',()=>{if($('rightAngleOnly').checked&&state.rightAngleActive!=='next'){activateRightAngleField('next');$('nextEdgeLength').select();}});
 $('previousEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.previous=true;if($('rightAngleOnly').checked)state.pointLengthDirty.next=false;validatePointLengths();});$('nextEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.next=true;if($('rightAngleOnly').checked)state.pointLengthDirty.previous=false;validatePointLengths();});
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
