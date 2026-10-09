@@ -45,6 +45,11 @@ function validCalibration(){
   if(!G.simple(state.region))throw Error('Ceiling outline crosses itself or has zero area. Adjust or retrace its points.');
   return boardMode()?G.calibrateBoards(state.reference,state.widths,2,state.region):G.calibrate(state.reference,Number($('refWidth').value),Number($('refDepth').value),state.region);
 }
+function pointEditCalibration(){
+  if(state.reference.length!==4)throw Error(`Mark corners needs 4 dots (${state.reference.length}/4 complete).`);
+  if(state.widths.length!==4)throw Error(`Mark board widths needs 4 purple dots (${state.widths.length}/4 complete).`);
+  try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
+}
 function grid(c){
   const xs=c.plane.map(p=>p[0]),ys=c.plane.map(p=>p[1]);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),step=Number($('spacing').value);
@@ -117,12 +122,12 @@ $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
 $('calculatePoint').onclick=()=>{
-  const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null)return;
+  const i=state.pointMenuIndex,n=state.region.length;if(i===null)return;let c=null,calibrationError='';try{c=pointEditCalibration();}catch(e){calibrationError=e.message;}
   const previous=(i+n-1)%n,next=(i+1)%n;
   $('previousEdgeLabel').firstChild.textContent=`Point ${i+1} to ${previous+1} (inches)`;$('nextEdgeLabel').firstChild.textContent=`Point ${i+1} to ${next+1} (inches)`;
   $('applyPointLengths').disabled=false;
   if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';}
-  else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent='You can enter lengths now. Apply will identify any missing calibration step.';}
+  else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent=calibrationError;}
   state.pointLengthDirty={previous:false,next:false};
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
@@ -130,13 +135,13 @@ $('previousEdgeLength').addEventListener('input',()=>state.pointLengthDirty.prev
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyPointLengths').onclick=()=>{
   try{
-    const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c)throw Error('Finish Mark corners and Mark board widths first.');
+    const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length;if(i===null)throw Error('Select a ceiling point first.');
     const previous=(i+n-1)%n,next=(i+1)%n,previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value),dirty=state.pointLengthDirty;
     if(dirty.previous&&!dirty.next)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[previous],state.region[i],previousLength);
     else if(dirty.next&&!dirty.previous)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[next],state.region[i],nextLength);
     else state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);
     fitStageToPoints();render();
-    const updated=state.calibration,anchor=G.project(updated.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(updated.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(updated.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};
+    const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};
     $('pointEditorStatus').textContent='Selected point moved; every other point stayed fixed.';
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };

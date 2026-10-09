@@ -22,6 +22,8 @@ The Calculate editor always opens and **Apply lengths** is always clickable. Bef
 
 Once the rectangular reference and board widths exist, calibration remains live as soon as a traced outline has three points. Manual length edits therefore work while **Trace outline** is still active; pressing **Finish** is not a prerequisite.
 
+Point-length editing derives its transform directly from the four reference corners and four purple width points rather than depending on the full ceiling outline being valid. A temporarily crossed or incomplete outline does not disable Apply. Missing markers are reported with exact completion counts, and conflicting calibration marks show their actual geometry error in the popup.
+
 The photo workspace has no nested scrolling or clipping container. Its canvas is constrained to the available screen height, and point menus automatically flip left/up near an edge so both the action menu and expanded length editor remain visible.
 
 ## Accuracy contract

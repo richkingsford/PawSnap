@@ -14,6 +14,8 @@ Run this checklist after every interaction or geometry change.
 - [ ] Confirm the second connected-line field automatically updates to its new measured length.
 - [ ] Repeat by changing only the second connected-line length.
 - [ ] Repeat a one-line edit while **Trace outline** is still active and before pressing **Finish**; Apply must move the selected point.
+- [ ] Make the ceiling outline temporarily invalid while all four reference corners and four purple width points remain valid; Calculate/Apply must still move only the selected point by using the reference calibration directly.
+- [ ] With incomplete calibration markers, confirm the popup reports exact completion counts instead of a generic “finish calibration” message.
 - [ ] Change both connected-line lengths and confirm the selected point moves to the nearest valid intersection while every other point remains fixed.
 - [ ] Enter an impossible pair of lengths and confirm an inline error appears without moving any point.
 
