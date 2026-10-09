@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},pointLengthLast:null,viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -128,21 +128,26 @@ $('calculatePoint').onclick=()=>{
   $('applyPointLengths').disabled=false;
   if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';}
   else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent=calibrationError;}
-  state.pointLengthDirty={previous:false,next:false};
+  state.pointLengthDirty={previous:false,next:false};state.pointLengthLast=null;
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
-$('previousEdgeLength').addEventListener('input',()=>state.pointLengthDirty.previous=true);$('nextEdgeLength').addEventListener('input',()=>state.pointLengthDirty.next=true);
+$('previousEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.previous=true;state.pointLengthLast='previous';});$('nextEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.next=true;state.pointLengthLast='next';});
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyPointLengths').onclick=()=>{
   try{
     const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length;if(i===null)throw Error('Select a ceiling point first.');
     const previous=(i+n-1)%n,next=(i+1)%n,previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value),dirty=state.pointLengthDirty;
+    let conflictFallback=false;
     if(dirty.previous&&!dirty.next)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[previous],state.region[i],previousLength);
     else if(dirty.next&&!dirty.previous)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[next],state.region[i],nextLength);
-    else state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);
+    else try{state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);}catch(e){
+      if(!state.pointLengthLast)throw e;conflictFallback=true;
+      const anchorIndex=state.pointLengthLast==='previous'?previous:next,length=state.pointLengthLast==='previous'?previousLength:nextLength;
+      state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[anchorIndex],state.region[i],length);
+    }
     fitStageToPoints();render();
-    const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};
-    $('pointEditorStatus').textContent='Selected point moved; every other point stayed fixed.';
+    const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};state.pointLengthLast=null;
+    $('pointEditorStatus').textContent=conflictFallback?'Those lengths conflict. Applied the last-edited length and recalculated the other; only the selected point moved.':'Selected point moved; every other point stayed fixed.';
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
 $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};

@@ -1,2 +1,4 @@
 .playwright-mcp/
 preview-*.png
+proof-frames/
+apply-lengths-regression-proof.*
