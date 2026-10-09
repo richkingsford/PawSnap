@@ -143,15 +143,14 @@ function render(){
   });
   $('referenceInfo').textContent=state.reference.length===4?'4/4 corners · drag to adjust':`${state.reference.length}/4 corners`;
   $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
-  $('boardInfo').textContent=`${state.widths.length}/4 width points${state.starter?' · starter marks — adjust as needed':''}`;
   const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
-  $('measure').disabled=!state.calibration;$('finish').disabled=state.mode!=='boundary'||state.region.length<3;$('undo').disabled=!['boundary','reference','measure','boards'].includes(state.mode);
-  ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
+  $('measure').disabled=!state.calibration;
+  ['reference','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=conservativeCorners(region,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
@@ -161,10 +160,7 @@ document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEven
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
 $('boards').onclick=()=>{state.outlineDimensions=null;state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
 $('reference').onclick=()=>{state.outlineDimensions=null;state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
-$('boundary').onclick=()=>{state.outlineDimensions=null;state.region=[];state.segment=[];state.mode='boundary';render();};
-$('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
-$('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
 $('calculatePoint').onclick=()=>{
   const i=state.pointMenuIndex,n=state.region.length;if(i===null)return;let c=null,calibrationError='';try{c=pointEditCalibration();}catch(e){calibrationError=e.message;}
   const previous=(i+n-1)%n,next=(i+1)%n;

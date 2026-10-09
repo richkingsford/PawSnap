@@ -10,7 +10,7 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 
 1. Load a sample or photo. The entire source image is preserved; zoom and scroll for precise marking.
 2. Default board mode assumes the marked board faces are exactly **2 inches wide**, as requested by the user. Mark A, B, C, D around a real framing rectangle on the selected plane, then mark two edge-to-edge board widths in different directions on that same plane. No rectangle dimensions need to be entered. Two widths are needed to resolve both axes without guessing camera parameters. They must be widths, not gaps or framing spacing.
-3. Alternatively select Measured rectangle and enter measured A–B and B–C lengths. Confirm those dimensions. Trace a simple ceiling polygon. Suggested sample outlines are manually prepared approximations, not automatically detected room boundaries. They default to four corners; extra corners are retained only for samples with a clearly visible additional boundary turn.
+3. Adjust the four green starting corners to the visible ceiling. Suggested sample outlines are manually prepared approximations, not automatically detected room boundaries. Uploaded photos receive four editable starting corners. Extra corners are retained only for samples with a clearly visible additional boundary turn and can otherwise be added from a point popup.
 4. View 1-, 6-, or 12-inch grid lines; labels appear every 12 inches. X/Y coordinates originate at A and can be negative beyond the reference.
 5. Measure two points on the plane, inspect selected area and edge lengths, and compare a second measured distance to check calibration. Export an SVG with the photo, annotations, scale status and accuracy qualification embedded.
 
@@ -26,7 +26,7 @@ The Calculate popup always assumes 90° corners. It selects a geometrically vali
 
 The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
-Once the rectangular reference and board widths exist, calibration remains live as soon as a traced outline has three points. Manual length edits therefore work while **Trace outline** is still active; pressing **Finish** is not a prerequisite.
+Once dimensions or reference marks exist, calibration remains live while green outline points are adjusted. Manual length edits therefore apply immediately without a separate finishing step.
 
 Point-length editing derives its transform directly from the four reference corners and four purple width points rather than depending on the full ceiling outline being valid. A temporarily crossed or incomplete outline does not disable Apply. Missing markers are reported with exact completion counts, and conflicting calibration marks show their actual geometry error in the popup.
 
@@ -48,7 +48,7 @@ The two original supplied photos are `framing-room.jpg` and `framing-wide.jpg`. 
 
 Choose **No sheet-rock** (default), a **4 × 8**, **4 × 10**, or **4 × 12 ft drywall sheet**. These are sheet face dimensions; thickness and installation specifications are not selected by this control. A single piece is called a drywall sheet or panel. USG lists 48-inch-wide panels in 8–12-foot lengths: https://assemblies-tools.usg.com/content/usgcom/en/products/walls/drywall/drywall-panels/lightweight-panels/sheetrock-ultralight-panels.141134.html.
 
-The interface defaults to **Virtual sheets** with a 4 × 8 ft drywall sheet selected. Every sample selection and uploaded photo returns to this view. Radio controls switch among Virtual sheets, Measurement grid, and Photo only. Full sheets use a blue overlay; every sheet requiring cuts uses a striped amber overlay and a `CUT S#` label. Uploaded photos still require calibration and a traced ceiling region before sheets can be placed; the selected view remains Virtual sheets while the app prompts for that information. **No sheet-rock** remains available in the sheet-size dropdown to disable layout.
+The interface defaults to **Virtual sheets** with a 4 × 8 ft drywall sheet selected. Every sample selection and uploaded photo returns to this view. Radio controls switch among Virtual sheets, Measurement grid, and Photo only. Full sheets use a blue overlay; sheets requiring cuts use a solid amber overlay and a `CUT S#` label. Uploaded photos begin with four editable ceiling corners and need either entered line dimensions or reference calibration before sheets can be placed. **No sheet-rock** remains available in the sheet-size dropdown to disable layout.
 
 Photo boundaries are not treated as ceiling boundaries. If any traced ceiling point touches the image edge, the perimeter is considered incomplete: the layout uses full-sheet tiling, shows labels such as `1 · 4×8′`, reports that cuts are unknown, and produces no cut list. Cut highlighting and cut outlines are enabled only when the complete traced perimeter lies inside the photo. This avoids falsely prescribing cuts where the ceiling continues beyond the camera frame.
 
