@@ -117,8 +117,9 @@ $('calculatePoint').onclick=()=>{
   const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null)return;
   const previous=(i+n-1)%n,next=(i+1)%n;
   $('previousEdgeLabel').firstChild.textContent=`Point ${i+1} to ${previous+1} (inches)`;$('nextEdgeLabel').firstChild.textContent=`Point ${i+1} to ${next+1} (inches)`;
-  if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';$('applyPointLengths').disabled=false;}
-  else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent='Finish Mark corners and Mark board widths before applying lengths.';$('applyPointLengths').disabled=true;}
+  $('applyPointLengths').disabled=false;
+  if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';}
+  else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent='You can enter lengths now. Apply will identify any missing calibration step.';}
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};

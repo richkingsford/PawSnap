@@ -18,7 +18,7 @@ Ceiling corners may sit outside a cropped photo. The photo is inset inside a pad
 
 Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** asks for the lengths of both lines connected to that point, keeps both neighboring endpoints fixed, and solves the two-circle intersection that moves only the selected point. When two intersections are possible, it uses the one nearest the point's current position. The resulting inch lengths appear over the lines and the popup stays open for editing. **Remove** deletes the point while preserving the three-point minimum. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted instead of silently clearing them. Calibration uses the fixed 2-inch-board assumption directly; the redundant reference and edge dropdowns are not shown.
 
-The Calculate editor always opens. Before calibration is complete it identifies the missing Mark corners / Mark board widths prerequisite in the popup and disables applying lengths; after calibration it preloads the two current measurements.
+The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
 The photo workspace has no nested scrolling or clipping container. Its canvas is constrained to the available screen height, and point menus automatically flip left/up near an edge so both the action menu and expanded length editor remain visible.
 
