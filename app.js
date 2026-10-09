@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],confidentExtraCorners:true,starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,outlineDimensions:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -32,13 +32,14 @@ function fitStageToPoints(){
 }
 function positionPointMenu(){
   const menu=$('pointMenu'),index=state.pointMenuIndex,circle=$('scene').querySelector(`[data-key="region"][data-index="${index}"]`);
-  if(index===null||!circle){menu.hidden=true;return;}
+  if(index===null){menu.hidden=true;return;}if(!circle){if(!$('pointEditor').hidden||!$('allPointsEditor').hidden)menu.hidden=false;else menu.hidden=true;return;}
   const dot=circle.getBoundingClientRect(),viewport=document.querySelector('.viewport').getBoundingClientRect();
   menu.hidden=false;const x=dot.left+dot.width/2-viewport.left,y=dot.top+dot.height/2-viewport.top,w=menu.offsetWidth,h=menu.offsetHeight;
   menu.style.left=`${Math.max(6,x+(x+10+w<=viewport.width?10:-w-10))}px`;
   menu.style.top=`${Math.max(6,y+(y+10+h<=viewport.height?10:-h-10))}px`;
 }
 function validCalibration(){
+  if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,state.region);
   if(state.reference.length!==4)return null;
   if(boardMode()&&state.widths.length!==4)return null;
   if(!boardMode()&&(!$('confirmed').checked||!$('refWidth').value||!$('refDepth').value))return null;
@@ -50,6 +51,7 @@ function validCalibration(){
   return boardMode()?G.calibrateBoards(state.reference,state.widths,2,state.region):G.calibrate(state.reference,Number($('refWidth').value),Number($('refDepth').value),state.region);
 }
 function pointEditCalibration(){
+  if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,[]);
   if(state.reference.length!==4||state.widths.length!==4)throw Error('Add scale marks to calculate inch lengths.');
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
 }
@@ -123,7 +125,7 @@ function render(){
   svg('image',{href:state.image.src,x:0,y:0,width:state.image.width,height:state.image.height});resetReadings();
   try{
     const c=validCalibration();
-    if(c){if(viewMode()==='grid')grid(c);else{$('gridValue').textContent='Off';$('gridNote').textContent='Choose Grid view';}state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=boardMode()?'2-inch scale · estimated':'Calibrated · estimated';$('status').classList.add('calibrated');
+    if(c){if(viewMode()==='grid')grid(c);else{$('gridValue').textContent='Off';$('gridNote').textContent='Choose Grid view';}state.calibration=c;$('area').textContent=`≈ ${(G.area(c.plane)/144).toFixed(1)}`;$('status').textContent=state.outlineDimensions?'Entered dimensions · estimated':boardMode()?'2-inch scale · estimated':'Calibrated · estimated';$('status').classList.add('calibrated');
       c.plane.forEach((p,i)=>{const e=document.createElement('span');e.textContent=`Edge ${i+1}: ≈ ${G.distance(p,c.plane[(i+1)%c.plane.length]).toFixed(1)}″`;$('edges').append(e);});
       if(state.segment.length===2){const [a,b]=state.segment.map(p=>G.project(c.inverse,p)),d=G.distance(a,b);$('distance').textContent=`≈ ${d.toFixed(1)}″`;label(state.segment[1],`≈ ${d.toFixed(1)}″`,'#89e2ff');const expected=Number($('checkLength').value);if(expected>0)$('checkResult').textContent=`Check difference: ${(d-expected).toFixed(1)}″ (${(Math.abs(d-expected)/expected*100).toFixed(1)}%). This checks one segment, not overall accuracy.`;}
     }
@@ -149,7 +151,7 @@ function render(){
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=conservativeCorners(region,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=conservativeCorners(region,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
@@ -157,9 +159,9 @@ for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength
 $('sheetSize').addEventListener('change',render);
 document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEventListener('change',render));
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
-$('boards').onclick=()=>{state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
-$('reference').onclick=()=>{state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
-$('boundary').onclick=()=>{state.region=[];state.segment=[];state.mode='boundary';render();};
+$('boards').onclick=()=>{state.outlineDimensions=null;state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
+$('reference').onclick=()=>{state.outlineDimensions=null;state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
+$('boundary').onclick=()=>{state.outlineDimensions=null;state.region=[];state.segment=[];state.mode='boundary';render();};
 $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
@@ -196,24 +198,24 @@ $('applyPointLengths').onclick=()=>{
 $('addPoint').onclick=()=>{
   const i=state.pointMenuIndex;if(i===null)return;const [x,y]=state.region[i],step=Math.max(24,Math.min(state.image.width,state.image.height)*.08),rightRoom=state.image.width-x,belowRoom=state.image.height-y,directions=rightRoom>=step||rightRoom>=belowRoom?[[1,0],[0,1]]:[[0,1],[1,0]];let point=null,insertionIndex=i+1;
   findPoint:for(const factor of [1,.5,.25,.125])for(const [dx,dy] of directions)for(const at of [i+1,i]){const candidate=[x+step*factor*dx,y+step*factor*dy],outline=state.region.map(p=>[...p]);outline.splice(at,0,candidate);if(G.simple(outline)){point=candidate;insertionIndex=at;break findPoint;}}if(!point){$('error').textContent='There is not enough clear space to add a dot to the right or below this point.';return;}
-  state.region.splice(insertionIndex,0,point);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
+  state.outlineDimensions=null;state.region.splice(insertionIndex,0,point);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
 };
 function openAllPointsEditor(message='Each field is one ceiling-outline line in inches.'){
   const list=$('allPointsList');list.replaceChildren();let c=null;try{c=pointEditCalibration();}catch(e){}
-  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.placeholder='Enter inches';if(c){const a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]);input.value=G.distance(a,b).toFixed(1);}input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');if(!c){$('allPointsStatus').textContent='Lengths are ready to enter; add scale marks before applying.';return;}const value=Number(input.value),following=(i+2)%state.region.length,a=G.project(c.inverse,state.region[i]),b=G.project(c.inverse,state.region[following]),base=G.distance(a,b),partner=list.querySelector(`input[data-index="${next}"]`);if(value>0&&value<base&&partner){partner.value=Math.sqrt(base**2-value**2).toFixed(1);partner.dataset.calculated='true';$('allPointsStatus').textContent=`Line ${next+1} calculated automatically for a 90° corner.`;}else $('allPointsStatus').textContent=`Line ${i+1} must be between 0″ and ${base.toFixed(1)}″.`;});label.append(input);row.append(label);list.append(row);});
-  $('allPointsStatus').textContent=c?message:'Enter any known line lengths. Add scale marks before applying.';$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
+  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.placeholder='Enter inches';if(c){const a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]);input.value=G.distance(a,b).toFixed(1);}input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');const value=Number(input.value);if(state.region.length===4&&value>0){const opposite=list.querySelector(`input[data-index="${(i+2)%4}"]`);if(opposite){opposite.value=value.toFixed(1);opposite.dataset.calculated='true';}}if(!c){const complete=[...list.querySelectorAll('input')].every(field=>Number(field.value)>0);$('allPointsStatus').textContent=complete?'All four lines are set. Apply dimensions.':value>0?`Opposite line ${(i+2)%4+1} calculated. Enter one adjacent line to complete the ceiling.`:'Enter a positive length in inches.';return;}const following=(i+2)%state.region.length,a=G.project(c.inverse,state.region[i]),b=G.project(c.inverse,state.region[following]),base=G.distance(a,b),partner=list.querySelector(`input[data-index="${next}"]`);if(value>0&&value<base&&partner){partner.value=Math.sqrt(base**2-value**2).toFixed(1);partner.dataset.calculated='true';$('allPointsStatus').textContent=`Line ${next+1} calculated automatically for a 90° corner.`;}else $('allPointsStatus').textContent=`Line ${i+1} must be between 0″ and ${base.toFixed(1)}″.`;});label.append(input);row.append(label);list.append(row);});
+  $('allPointsStatus').textContent=c?message:state.region.length===4?'Enter one line and one adjacent line; opposite sides calculate automatically.':'Enter known lengths after adding scale marks.';$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
 }
 $('changeAllPoints').onclick=openAllPointsEditor;
 $('cancelAllPoints').onclick=()=>{$('allPointsEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyAllPoints').onclick=()=>{
   try{
-    let c;try{c=pointEditCalibration();}catch(e){$('allPointsStatus').textContent='Add scale marks before applying inch lengths.';return;}const next=state.region.map(p=>[...p]),changed=new Set();
+    let c;try{c=pointEditCalibration();}catch(e){if(state.region.length!==4){$('allPointsStatus').textContent='Add scale marks before applying this outline.';return;}const values=[...$('allPointsList').querySelectorAll('input')].map(input=>Number(input.value));if(values.some(value=>!Number.isFinite(value)||value<=0)){$('allPointsStatus').textContent='Enter one line and one adjacent line; opposite sides calculate automatically.';return;}state.outlineDimensions={width:(values[0]+values[2])/2,depth:(values[1]+values[3])/2};c=pointEditCalibration();render();openAllPointsEditor('Dimensions applied. Opposite sides match and every corner is 90°.');return;}const next=state.region.map(p=>[...p]),changed=new Set();
     for(const input of $('allPointsList').querySelectorAll('input[data-dirty="true"]')){const value=Number(input.value),i=Number(input.dataset.index),target=(i+1)%next.length,following=(i+2)%next.length,anchorPlane=G.project(c.inverse,next[i]),followingPlane=G.project(c.inverse,next[following]),base=G.distance(anchorPlane,followingPlane);if(input.value.trim()===''||!Number.isFinite(value)||value<=0||value>=base){const message=`Line ${i+1} must be greater than 0″ and less than ${base.toFixed(1)}″ to keep the next corner at 90°.`;input.setCustomValidity(message);input.setAttribute('aria-invalid','true');input.reportValidity();throw Error(message);}const other=Math.sqrt(base**2-value**2);next[target]=G.solvePointFromLengths(c.inverse,c.forward,next[target],next[i],next[following],value,other);changed.add(target);}
     if(!changed.size){$('allPointsStatus').textContent='Change at least one line first.';return;}if(!G.simple(next))throw Error('Those lengths make the ceiling outline cross itself. Change one or more lines.');
     state.region=next;fitStageToPoints();render();openAllPointsEditor(`Moved ${changed.size} ending point${changed.size===1?'':'s'}; all other points stayed fixed.`);
   }catch(e){$('allPointsStatus').textContent=e.message;}
 };
-$('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
+$('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.outlineDimensions=null;state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
 function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');

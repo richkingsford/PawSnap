@@ -29,6 +29,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
 - [ ] Open **Change all points** with and without completed scale marks. Confirm there is exactly one inch-length input for every outline line and no missing-corners message replaces the fields.
 - [ ] On a calibrated photo, change one line and confirm its connected line recalculates immediately. Apply and confirm only the shared ending point moves and the corner remains 90°.
+- [ ] On an uncalibrated four-corner photo, enter Line 1 and confirm Line 3 matches automatically; enter Line 2 and confirm Line 4 matches. Apply without scale marks and confirm area, grid, and sheets become calibrated from those dimensions.
 - [ ] Clear a changed all-lines value or enter an impossible 90° length and confirm specific validation appears and no point moves.
 - [ ] Confirm the popup shows the brief **90° corners assumed** note, with no checkbox. Exactly one connected-line field is editable and the other is visibly grayed.
 - [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
