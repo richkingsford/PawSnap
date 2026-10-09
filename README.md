@@ -18,6 +18,8 @@ Ceiling corners may sit outside a cropped photo. The photo is inset inside a pad
 
 Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** asks for the lengths of both lines connected to that point, keeps the selected point fixed, moves both neighboring endpoints, and displays the resulting inch lengths over the lines. The same popup stays open for editing. **Remove** deletes the point while preserving the three-point minimum. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted instead of silently clearing them. Calibration uses the fixed 2-inch-board assumption directly; the redundant reference and edge dropdowns are not shown.
 
+The Calculate editor always opens. Before calibration is complete it identifies the missing Mark corners / Mark board widths prerequisite in the popup and disables applying lengths; after calibration it preloads the two current measurements.
+
 ## Accuracy contract
 
 An ordinary single image has no absolute physical scale. Board mode supplies scale through the user's explicit 2-inch assumption, not through verified physical measurements. The Ceiling battens sample opens with approximate hand-placed framing and width marks and an estimated inch grid. Other samples start with no reference marks. These starter marks are editable and are not automatic board detection. No standard framing spacing or camera focal length is assumed.

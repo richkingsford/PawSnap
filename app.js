@@ -114,20 +114,22 @@ $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
 $('calculatePoint').onclick=()=>{
-  const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c){$('error').textContent='Finish calibration before entering ceiling-line lengths.';return;}
-  const previous=(i+n-1)%n,next=(i+1)%n,anchor=G.project(c.inverse,state.region[i]);
+  const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null)return;
+  const previous=(i+n-1)%n,next=(i+1)%n;
   $('previousEdgeLabel').firstChild.textContent=`Point ${i+1} to ${previous+1} (inches)`;$('nextEdgeLabel').firstChild.textContent=`Point ${i+1} to ${next+1} (inches)`;
-  $('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);
+  if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';$('applyPointLengths').disabled=false;}
+  else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent='Finish Mark corners and Mark board widths before applying lengths.';$('applyPointLengths').disabled=true;}
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyPointLengths').onclick=()=>{
   try{
-    const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c)throw Error('Finish calibration first.');
+    const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c)throw Error('Finish Mark corners and Mark board widths first.');
     const previous=(i+n-1)%n,next=(i+1)%n,anchor=state.region[i],previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
     state.region[previous]=G.extendPoint(c.inverse,c.forward,anchor,state.region[previous],previousLength);state.region[next]=G.extendPoint(c.inverse,c.forward,anchor,state.region[next],nextLength);
     fitStageToPoints();render();
-  }catch(e){$('error').textContent=e.message;}
+    $('pointEditorStatus').textContent='Lengths applied. You can edit and apply again.';
+  }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
 $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
 function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
