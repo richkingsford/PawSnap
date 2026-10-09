@@ -14,6 +14,8 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 4. View 1-, 6-, or 12-inch grid lines; labels appear every 12 inches. X/Y coordinates originate at A and can be negative beyond the reference.
 5. Measure two points on the plane, inspect selected area and edge lengths, and compare a second measured distance to check calibration. Export an SVG with the photo, annotations, scale status and accuracy qualification embedded.
 
+Ceiling corners may sit outside a cropped photo. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
+
 ## Accuracy contract
 
 An ordinary single image has no absolute physical scale. Board mode supplies scale through the user's explicit 2-inch assumption, not through verified physical measurements. The Ceiling battens sample opens with approximate hand-placed framing and width marks and an estimated inch grid. Other samples start with no reference marks. These starter marks are editable and are not automatic board detection. No standard framing spacing or camera focal length is assumed.

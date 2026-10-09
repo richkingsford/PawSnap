@@ -48,6 +48,12 @@
     const w=Math.sqrt(w2),d=Math.sqrt(d2);
     return {...calibrate(q,w,d,region),referenceWidth:w,referenceDepth:d};
   }
-  const api={convex,homography,project,area,simple,calibrate,calibrateBoards,distance:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])};
+  function extendPoint(inverse,forward,anchor,moving,length){
+    if(!Number.isFinite(length)||length<=0)throw Error('Enter a positive line length.');
+    const a=project(inverse,anchor),b=project(inverse,moving),dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy);
+    if(d<1e-6)throw Error('Move the two edge points apart before entering its length.');
+    return project(forward,[a[0]+dx/d*length,a[1]+dy/d*length]);
+  }
+  const api={convex,homography,project,area,simple,calibrate,calibrateBoards,extendPoint,distance:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])};
   if(typeof module!=='undefined')module.exports=api;else root.Geometry=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

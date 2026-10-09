@@ -27,3 +27,8 @@ assert.throws(()=>G.calibrateBoards(reference,shiftedWidths,2,[]),/both axes/);
 const scaled=G.calibrateBoards(reference,widths,4,ceiling.map(p=>G.project(camera,p)));
 close(scaled.referenceWidth,96);close(G.area(scaled.plane),4*132*156);
 console.log('PASS: board widths recover both scales; parallel widths rejected; assumption rescales measurements.');
+const anchor=G.project(camera,[20,30]),direction=G.project(camera,[28,36]),extended=G.extendPoint(c.inverse,c.forward,anchor,direction,120);
+const anchorPlane=G.project(c.inverse,anchor),extendedPlane=G.project(c.inverse,extended);
+close(G.distance(anchorPlane,extendedPlane),120);close(anchor[0],G.project(c.forward,anchorPlane)[0]);close(anchor[1],G.project(c.forward,anchorPlane)[1]);
+assert.throws(()=>G.extendPoint(c.inverse,c.forward,anchor,direction,0),/positive/);
+console.log('PASS: typed edge lengths preserve the anchor and extend the moving endpoint in the calibrated plane.');

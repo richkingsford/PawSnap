@@ -18,6 +18,14 @@ function label(p,text,color='#ecffda',parent=$('scene')){const e=svg('text',{x:p
 function pointString(p){return p.map(a=>a.join(',')).join(' ');}
 function inside([x,y],polygon){let hit=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){const [a,b]=polygon[i],[c,d]=polygon[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)hit=!hit;}return hit;}
 function resetReadings(){state.calibration=null;$('area').textContent=$('distance').textContent=$('gridValue').textContent='—';$('gridNote').textContent='Requires calibration';$('edges').replaceChildren();$('checkResult').textContent='Use a second known distance to check calibration.';$('status').textContent='Uncalibrated · no inch scale';$('status').classList.remove('calibrated');$('error').textContent='';}
+function syncEdgeControls(){
+  const select=$('edgeSelect'),prior=select.value;select.replaceChildren();
+  state.region.forEach((_,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} → ${(i+1)%state.region.length+1}`;select.append(option);});
+  if([...select.options].some(o=>o.value===prior))select.value=prior;
+  const ready=Boolean(state.calibration)&&state.region.length>=2;
+  $('edgeSelect').disabled=$('edgeAnchor').disabled=$('edgeLength').disabled=$('applyEdgeLength').disabled=!ready;
+  $('edgeLengthInfo').textContent=ready?'The fixed dot stays put; the other follows the edge direction, even beyond the photo.':'Calibrate first, then set any ceiling edge.';
+}
 function validCalibration(){
   if(state.reference.length!==4)return null;
   if(boardMode()&&state.widths.length!==4)return null;
@@ -75,9 +83,10 @@ function render(){
   $('referenceInfo').textContent=state.reference.length===4?'4/4 corners · drag to adjust':`${state.reference.length}/4 corners`;
   $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
   $('boardInfo').textContent=`${state.widths.length}/4 width points${state.starter?' · starter marks — adjust as needed':''}`;
-  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
+  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
   $('measure').disabled=!state.calibration;$('finish').disabled=state.mode!=='boundary'||state.region.length<3;$('undo').disabled=!['boundary','reference','measure','boards'].includes(state.mode);
+  syncEdgeControls();
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
 }
 async function loadPhoto(url,name,region=[],starter=null){
@@ -95,19 +104,28 @@ $('boundary').onclick=()=>{state.region=[];state.segment=[];state.mode='boundary
 $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
-function eventPoint(e){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return [Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))];}
+function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
+$('applyEdgeLength').onclick=()=>{
+  try{
+    if(!state.calibration)throw Error('Calibrate the ceiling before setting an edge length.');
+    const start=Number($('edgeSelect').value),end=(start+1)%state.region.length,keepStart=$('edgeAnchor').value==='start';
+    const anchor=keepStart?start:end,moving=keepStart?end:start,length=Number($('edgeLength').value);
+    state.region[moving]=G.extendPoint(state.calibration.inverse,state.calibration.forward,state.region[anchor],state.region[moving],length);
+    render();
+  }catch(e){$('error').textContent=e.message;}
+};
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');
-  if(key&&state.mode==='edit'){state.drag={key,index:Number(e.target.getAttribute('data-index'))};$('scene').setPointerCapture(e.pointerId);return;}
-  if(state.mode==='reference'){state.reference.push(p);if(state.reference.length===4)state.mode='edit';}
+  if(key&&['edit','reference','boundary'].includes(state.mode)){state.drag={key,index:Number(e.target.getAttribute('data-index'))};$('scene').setPointerCapture(e.pointerId);return;}
+  if(state.mode==='reference'&&state.reference.length<4)state.reference.push(p);
   else if(state.mode==='boundary')state.region.push(p);
   else if(state.mode==='boards'){state.widths.push(p);if(state.widths.length===4)state.mode='edit';}
   else if(state.mode==='measure'&&state.calibration){if(!inside(p,state.region)){$('error').textContent='Choose a point inside the traced ceiling region.';return;}state.segment.push(p);if(state.segment.length===2)state.mode='edit';}
   render();
 });
-$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const p=eventPoint(e);if(state.drag.key==='segment'&&!inside(p,state.region))return;state[state.drag.key][state.drag.index]=p;render();});
+$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;state[state.drag.key][state.drag.index]=p;render();});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('scene').addEventListener(type,()=>{if(state.drag){state.drag=null;render();}});
-$('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,p=[Math.max(0,Math.min(state.image.width,old[0]+m[0]*step)),Math.max(0,Math.min(state.image.height,old[1]+m[1]*step))];if(key==='segment'&&!inside(p,state.region))return;state[key][index]=p;render();$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`).focus();});
+$('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,raw=[old[0]+m[0]*step,old[1]+m[1]*step],mayLeave=key==='region'||key==='reference',p=mayLeave?raw:[Math.max(0,Math.min(state.image.width,raw[0])),Math.max(0,Math.min(state.image.height,raw[1]))];if(key==='segment'&&!inside(p,state.region))return;state[key][index]=p;render();const moved=$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`);if(moved)moved.focus();});
 $('export').onclick=async()=>{
   try{const clone=$('scene').cloneNode(true),canvas=document.createElement('canvas');canvas.width=state.image.width;canvas.height=state.image.height;const ctx=canvas.getContext('2d');ctx.drawImage(state.image,0,0);clone.querySelector('image').setAttribute('href',canvas.toDataURL('image/png'));clone.setAttribute('width',canvas.width);clone.setAttribute('height',canvas.height);clone.removeAttribute('style');const text=document.createElementNS(NS,'text');text.setAttribute('x',10);text.setAttribute('y',canvas.height-16);text.setAttribute('font-size',12);text.setAttribute('fill','white');text.setAttribute('stroke','#162016');text.setAttribute('paint-order','stroke');text.setAttribute('stroke-width',3);text.textContent=state.calibration?`${boardMode()?'ASSUMED 2-INCH BOARD WIDTHS':`Reference ${$('refWidth').value} × ${$('refDepth').value} in`} | grid ${$('spacing').value} in | Estimates; accuracy not verified`:'UNCALIBRATED — NO INCH SCALE';clone.append(text);const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'}));const link=document.createElement('a');link.href=url;link.download='ceiling-measurement.svg';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('error').textContent=`Export failed: ${e.message}`;}
 };
