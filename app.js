@@ -26,14 +26,6 @@ function fitStageToPoints(){
   const minY=Math.min(-baseY,...points.map(p=>p[1]-extraY)),maxY=Math.max(h+baseY,...points.map(p=>p[1]+extraY));
   state.viewBox=[minX,minY,maxX-minX,maxY-minY];
 }
-function syncEdgeControls(){
-  const select=$('edgeSelect'),prior=select.value;select.replaceChildren();
-  state.region.forEach((_,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} → ${(i+1)%state.region.length+1}`;select.append(option);});
-  if([...select.options].some(o=>o.value===prior))select.value=prior;
-  const ready=Boolean(state.calibration)&&state.region.length>=2;
-  $('edgeSelect').disabled=$('edgeAnchor').disabled=$('edgeLength').disabled=$('applyEdgeLength').disabled=!ready;
-  $('edgeLengthInfo').textContent=ready?'The fixed dot stays put; the other follows the edge direction, even beyond the photo.':'Calibrate first, then set any ceiling edge.';
-}
 function positionPointMenu(){
   const menu=$('pointMenu'),index=state.pointMenuIndex,circle=$('scene').querySelector(`[data-key="region"][data-index="${index}"]`);
   if(index===null||!circle){menu.hidden=true;return;}
@@ -89,6 +81,7 @@ function render(){
   drawDrywall(viewMode()==='sheets'?state.calibration:null,viewMode(),fullPerimeterVisible());
   const showGuides=viewMode()==='grid'||state.mode!=='edit'||!state.calibration;
   if(state.region.length>=3&&viewMode()!=='photo'&&showGuides)svg('polygon',{points:pointString(state.region),fill:'#c7f36a12',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
+  if(state.calibration&&viewMode()!=='photo'&&showGuides)state.region.forEach((p,i)=>{const q=state.region[(i+1)%state.region.length],a=G.project(state.calibration.inverse,p),b=G.project(state.calibration.inverse,q),mid=[(p[0]+q[0])/2,(p[1]+q[1])/2],tag=label(mid,`${G.distance(a,b).toFixed(1)}″`,'#c7f36a');tag.setAttribute('text-anchor','middle');tag.setAttribute('data-edge-length',String(i));});
   if(state.reference.length>1&&viewMode()!=='photo'&&showGuides)svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
   if(state.segment.length===2&&showGuides)line(...state.segment,'#80dcff',2);
   if(boardMode()&&viewMode()!=='photo'&&showGuides)for(let i=0;i+1<state.widths.length;i+=2){line(state.widths[i],state.widths[i+1],'#ff8fdf',3);const p=state.widths[i+1];label([p[0]+(i===0?-45:15),p[1]+(i===0?-12:25)],`W${i/2+1}: 2″`,'#ff8fdf');}
@@ -102,7 +95,6 @@ function render(){
   const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
   $('measure').disabled=!state.calibration;$('finish').disabled=state.mode!=='boundary'||state.region.length<3;$('undo').disabled=!['boundary','reference','measure','boards'].includes(state.mode);
-  syncEdgeControls();
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
   requestAnimationFrame(positionPointMenu);
 }
@@ -121,22 +113,27 @@ $('boundary').onclick=()=>{state.region=[];state.segment=[];state.mode='boundary
 $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
-$('calculatePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;$('edgeSelect').value=String(i);$('edgeAnchor').value='start';$('edgeLengthInfo').textContent=`Point ${i+1} stays fixed. Enter the full length to point ${(i+1)%state.region.length+1}.`;$('edgeLength').focus();$('edgeLength').select();};
-$('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
-function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
-$('applyEdgeLength').onclick=()=>{
+$('calculatePoint').onclick=()=>{
+  const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c){$('error').textContent='Finish calibration before entering ceiling-line lengths.';return;}
+  const previous=(i+n-1)%n,next=(i+1)%n,anchor=G.project(c.inverse,state.region[i]);
+  $('previousEdgeLabel').firstChild.textContent=`Point ${i+1} to ${previous+1} (inches)`;$('nextEdgeLabel').firstChild.textContent=`Point ${i+1} to ${next+1} (inches)`;
+  $('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);
+  $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
+};
+$('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
+$('applyPointLengths').onclick=()=>{
   try{
-    if(!state.calibration)throw Error('Calibrate the ceiling before setting an edge length.');
-    const start=Number($('edgeSelect').value),end=(start+1)%state.region.length,keepStart=$('edgeAnchor').value==='start';
-    const anchor=keepStart?start:end,moving=keepStart?end:start,length=Number($('edgeLength').value);
-    state.region[moving]=G.extendPoint(state.calibration.inverse,state.calibration.forward,state.region[anchor],state.region[moving],length);
-    fitStageToPoints();
-    render();
+    const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c)throw Error('Finish calibration first.');
+    const previous=(i+n-1)%n,next=(i+1)%n,anchor=state.region[i],previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
+    state.region[previous]=G.extendPoint(c.inverse,c.forward,anchor,state.region[previous],previousLength);state.region[next]=G.extendPoint(c.inverse,c.forward,anchor,state.region[next],nextLength);
+    fitStageToPoints();render();
   }catch(e){$('error').textContent=e.message;}
 };
+$('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
+function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');
-  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
+  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;$('pointEditor').hidden=true;$('pointActions').hidden=false;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
   state.pointMenuIndex=null;$('pointMenu').hidden=true;
   if(state.mode==='reference'&&state.reference.length<4)state.reference.push(p);
   else if(state.mode==='boundary')state.region.push(p);

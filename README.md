@@ -16,7 +16,7 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 
 Ceiling corners may sit outside a cropped photo. The photo is inset inside a padded work area, and that area expands to keep off-photo handles visible. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
 
-Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** selects that point as the fixed endpoint of its outgoing edge and focuses the full-length field; **Remove** deletes it while preserving the three-point minimum. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted instead of silently clearing them.
+Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** asks for the lengths of both lines connected to that point, keeps the selected point fixed, moves both neighboring endpoints, and displays the resulting inch lengths over the lines. The same popup stays open for editing. **Remove** deletes the point while preserving the three-point minimum. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted instead of silently clearing them. Calibration uses the fixed 2-inch-board assumption directly; the redundant reference and edge dropdowns are not shown.
 
 ## Accuracy contract
 
