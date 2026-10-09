@@ -25,6 +25,10 @@ Run this checklist after every interaction or geometry change.
 - [ ] **Mark corners** leaves all four reference handles visible and draggable, including outside the photo.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
+- [ ] Check **90° angles only**. Confirm exactly one length field is editable and the other is visibly grayed.
+- [ ] Click the grayed field. Confirm it becomes editable and the previously active field becomes grayed.
+- [ ] Enter a valid active-leg length and confirm the other leg calculates automatically; Apply must move only the selected point and produce a 90° angle.
+- [ ] Enter a leg length equal to or greater than the fixed neighbor spacing and confirm validation shows the exact valid interval and blocks Apply.
 
 ## Workspace and sheet overlay
 

@@ -20,6 +20,8 @@ Clicking a green ceiling-outline point, or releasing it after a drag, opens a po
 
 If both edited lengths cannot geometrically meet while their neighboring dots remain fixed, live validation marks the fields invalid and shows the exact allowable interval for each value. Apply is blocked and no point moves until the pair is valid. Editing only one field remains valid: the selected point moves to satisfy it and the other displayed length recalculates.
 
+The Calculate popup also offers **90° angles only**. When enabled, one connected-line field is editable and the other is grayed and calculated from the fixed neighbor spacing. Clicking the gray field switches which leg is editable. Apply moves only the selected point to the nearest 90° solution. The editable leg must be greater than zero and shorter than the fixed neighbor spacing; validation displays the exact interval and blocks invalid values.
+
 The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
 Once the rectangular reference and board widths exist, calibration remains live as soon as a traced outline has three points. Manual length edits therefore work while **Trace outline** is still active; pressing **Finish** is not a prerequisite.
