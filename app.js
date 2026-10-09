@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},pointLengthLast:null,viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -49,6 +49,23 @@ function pointEditCalibration(){
   if(state.reference.length!==4)throw Error(`Mark corners needs 4 dots (${state.reference.length}/4 complete).`);
   if(state.widths.length!==4)throw Error(`Mark board widths needs 4 purple dots (${state.widths.length}/4 complete).`);
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
+}
+function validatePointLengths(){
+  const previousInput=$('previousEdgeLength'),nextInput=$('nextEdgeLength'),dirty=state.pointLengthDirty;
+  previousInput.setCustomValidity('');nextInput.setCustomValidity('');previousInput.removeAttribute('aria-invalid');nextInput.removeAttribute('aria-invalid');
+  const previousLength=Number(previousInput.value),nextLength=Number(nextInput.value);
+  if(!Number.isFinite(previousLength)||previousLength<=0||!Number.isFinite(nextLength)||nextLength<=0){const message='Both lengths must be positive numbers greater than 0 inches.';if(!(previousLength>0)){previousInput.setCustomValidity(message);previousInput.setAttribute('aria-invalid','true');}if(!(nextLength>0)){nextInput.setCustomValidity(message);nextInput.setAttribute('aria-invalid','true');}$('pointEditorStatus').textContent=message;return false;}
+  if(!(dirty.previous&&dirty.next)){$('pointEditorStatus').textContent=dirty.previous||dirty.next?'The edited line will be applied; the other length will recalculate.':'Enter one or both full lengths, then apply.';return true;}
+  try{
+    const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length,previous=(i+n-1)%n,next=(i+1)%n;
+    const p=G.project(c.inverse,state.region[previous]),q=G.project(c.inverse,state.region[next]),base=G.distance(p,q);
+    const previousMin=Math.abs(base-nextLength),previousMax=base+nextLength,nextMin=Math.abs(base-previousLength),nextMax=base+previousLength;
+    const previousValid=previousLength+1e-6>=previousMin&&previousLength<=previousMax+1e-6,nextValid=nextLength+1e-6>=nextMin&&nextLength<=nextMax+1e-6;
+    previousInput.min=Math.max(.1,previousMin).toFixed(1);previousInput.max=previousMax.toFixed(1);nextInput.min=Math.max(.1,nextMin).toFixed(1);nextInput.max=nextMax.toFixed(1);
+    if(previousValid&&nextValid){$('pointEditorStatus').textContent=`Both lengths are compatible. Neighbor spacing is ${base.toFixed(1)}″.`;return true;}
+    const message=`These lengths cannot meet. With the other value entered, the first line must be ${previousMin.toFixed(1)}–${previousMax.toFixed(1)}″ and the second must be ${nextMin.toFixed(1)}–${nextMax.toFixed(1)}″.`;
+    if(!previousValid){previousInput.setCustomValidity(message);previousInput.setAttribute('aria-invalid','true');}if(!nextValid){nextInput.setCustomValidity(message);nextInput.setAttribute('aria-invalid','true');}$('pointEditorStatus').textContent=message;return false;
+  }catch(e){$('pointEditorStatus').textContent=e.message;return false;}
 }
 function grid(c){
   const xs=c.plane.map(p=>p[0]),ys=c.plane.map(p=>p[1]);
@@ -124,30 +141,27 @@ $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measur
 $('calculatePoint').onclick=()=>{
   const i=state.pointMenuIndex,n=state.region.length;if(i===null)return;let c=null,calibrationError='';try{c=pointEditCalibration();}catch(e){calibrationError=e.message;}
   const previous=(i+n-1)%n,next=(i+1)%n;
+  $('previousEdgeLength').min=$('nextEdgeLength').min='.1';$('previousEdgeLength').max=$('nextEdgeLength').max='10000';$('previousEdgeLength').setCustomValidity('');$('nextEdgeLength').setCustomValidity('');
   $('previousEdgeLabel').firstChild.textContent=`Point ${i+1} to ${previous+1} (inches)`;$('nextEdgeLabel').firstChild.textContent=`Point ${i+1} to ${next+1} (inches)`;
   $('applyPointLengths').disabled=false;
   if(c){const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);$('pointEditorStatus').textContent='Enter both full lengths, then apply.';}
   else{$('previousEdgeLength').value=$('nextEdgeLength').value='';$('pointEditorStatus').textContent=calibrationError;}
-  state.pointLengthDirty={previous:false,next:false};state.pointLengthLast=null;
+  state.pointLengthDirty={previous:false,next:false};
   $('pointActions').hidden=true;$('pointEditor').hidden=false;$('previousEdgeLength').focus();$('previousEdgeLength').select();requestAnimationFrame(positionPointMenu);
 };
-$('previousEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.previous=true;state.pointLengthLast='previous';});$('nextEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.next=true;state.pointLengthLast='next';});
+$('previousEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.previous=true;validatePointLengths();});$('nextEdgeLength').addEventListener('input',()=>{state.pointLengthDirty.next=true;validatePointLengths();});
 $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyPointLengths').onclick=()=>{
   try{
     const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length;if(i===null)throw Error('Select a ceiling point first.');
     const previous=(i+n-1)%n,next=(i+1)%n,previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value),dirty=state.pointLengthDirty;
-    let conflictFallback=false;
+    if(!validatePointLengths()){($('previousEdgeLength').validationMessage?$('previousEdgeLength'):$('nextEdgeLength')).reportValidity();return;}
     if(dirty.previous&&!dirty.next)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[previous],state.region[i],previousLength);
     else if(dirty.next&&!dirty.previous)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[next],state.region[i],nextLength);
-    else try{state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);}catch(e){
-      if(!state.pointLengthLast)throw e;conflictFallback=true;
-      const anchorIndex=state.pointLengthLast==='previous'?previous:next,length=state.pointLengthLast==='previous'?previousLength:nextLength;
-      state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[anchorIndex],state.region[i],length);
-    }
+    else state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);
     fitStageToPoints();render();
-    const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};state.pointLengthLast=null;
-    $('pointEditorStatus').textContent=conflictFallback?'Those lengths conflict. Applied the last-edited length and recalculated the other; only the selected point moved.':'Selected point moved; every other point stayed fixed.';
+    const anchor=G.project(c.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(c.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};
+    $('pointEditorStatus').textContent='Selected point moved; every other point stayed fixed.';
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
 $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};

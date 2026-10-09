@@ -17,8 +17,8 @@ Run this checklist after every interaction or geometry change.
 - [ ] Make the ceiling outline temporarily invalid while all four reference corners and four purple width points remain valid; Calculate/Apply must still move only the selected point by using the reference calibration directly.
 - [ ] With incomplete calibration markers, confirm the popup reports exact completion counts instead of a generic “finish calibration” message.
 - [ ] Change both connected-line lengths and confirm the selected point moves to the nearest valid intersection while every other point remains fixed.
-- [ ] Enter an impossible pair of lengths and confirm the last-edited value moves only the selected point while the other field recalculates.
-- [ ] Enter the exact conflicting pair 111″ then 222″ on point 2. Apply must move point 2 using the last-edited 222″ value, recalculate the 111″ field, and leave every other point fixed.
+- [ ] Enter an impossible pair of lengths and confirm Apply is blocked with exact allowable ranges for both fields; no point may move.
+- [ ] Enter the exact conflicting pair 111″ then 222″ on point 2. Confirm the popup explains why they cannot meet and displays each field's valid range.
 
 ## Calibration controls
 
