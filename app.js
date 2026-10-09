@@ -190,11 +190,32 @@ $('applyPointLengths').onclick=()=>{
     $('pointEditorStatus').textContent='Selected point moved; every other point stayed fixed.';
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
+$('addPoint').onclick=()=>{
+  const i=state.pointMenuIndex;if(i===null)return;const [x,y]=state.region[i],step=Math.max(24,Math.min(state.image.width,state.image.height)*.08),rightRoom=state.image.width-x,belowRoom=state.image.height-y,directions=rightRoom>=step||rightRoom>=belowRoom?[[1,0],[0,1]]:[[0,1],[1,0]];let point=null,insertionIndex=i+1;
+  findPoint:for(const factor of [1,.5,.25,.125])for(const [dx,dy] of directions)for(const at of [i+1,i]){const candidate=[x+step*factor*dx,y+step*factor*dy],outline=state.region.map(p=>[...p]);outline.splice(at,0,candidate);if(G.simple(outline)){point=candidate;insertionIndex=at;break findPoint;}}if(!point){$('error').textContent='There is not enough clear space to add a dot to the right or below this point.';return;}
+  state.region.splice(insertionIndex,0,point);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
+};
+function openAllPointsEditor(message='Positions are inches on the calibrated ceiling plane.'){
+  const list=$('allPointsList');list.replaceChildren();let c;
+  try{c=pointEditCalibration();}catch(e){$('allPointsStatus').textContent=e.message;$('pointActions').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);return;}
+  state.region.forEach((point,i)=>{const physical=G.project(c.inverse,point),row=document.createElement('div'),title=document.createElement('strong');row.className='all-point-row';title.textContent=`Point ${i+1}`;row.append(title);['X','Y'].forEach((axis,j)=>{const label=document.createElement('label'),input=document.createElement('input');label.textContent=`${axis} (in)`;input.type='number';input.step='any';input.value=physical[j].toFixed(1);input.dataset.index=String(i);input.dataset.axis=String(j);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');$('allPointsStatus').textContent='Apply moves only the points you changed.';});label.append(input);row.append(label);});list.append(row);});
+  $('allPointsStatus').textContent=message;$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
+}
+$('changeAllPoints').onclick=openAllPointsEditor;
+$('cancelAllPoints').onclick=()=>{$('allPointsEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
+$('applyAllPoints').onclick=()=>{
+  try{
+    const c=pointEditCalibration(),next=state.region.map(p=>[...p]),changed=new Set();
+    for(const input of $('allPointsList').querySelectorAll('input[data-dirty="true"]')){const value=Number(input.value),i=Number(input.dataset.index),axis=Number(input.dataset.axis);if(input.value.trim()===''||!Number.isFinite(value)){const message=`Point ${i+1} ${axis?'Y':'X'} needs a numeric position in inches.`;input.setCustomValidity(message);input.setAttribute('aria-invalid','true');input.reportValidity();throw Error(message);}let physical=G.project(c.inverse,next[i]);physical[axis]=value;next[i]=G.project(c.forward,physical);changed.add(i);}
+    if(!changed.size){$('allPointsStatus').textContent='Change at least one value first.';return;}if(!G.simple(next))throw Error('Those positions make the ceiling outline cross itself. Change one or more values.');
+    state.region=next;fitStageToPoints();render();openAllPointsEditor(`Moved ${changed.size} point${changed.size===1?'':'s'}; unchanged points stayed fixed.`);
+  }catch(e){$('allPointsStatus').textContent=e.message;}
+};
 $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
 function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');
-  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;$('pointEditor').hidden=true;$('pointActions').hidden=false;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
+  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=true;$('pointActions').hidden=false;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
   state.pointMenuIndex=null;$('pointMenu').hidden=true;
   if(state.mode==='reference'&&state.reference.length<4)state.reference.push(p);
   else if(state.mode==='boundary')state.region.push(p);

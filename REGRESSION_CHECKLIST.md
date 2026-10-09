@@ -25,6 +25,9 @@ Run this checklist after every interaction or geometry change.
 - [ ] **Mark corners** leaves all four reference handles visible and draggable, including outside the photo.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
+- [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
+- [ ] Open **Change all points** and confirm every outline point has X/Y inch inputs. Change one coordinate, apply, and confirm only that point moves.
+- [ ] Clear a changed all-points value and confirm specific numeric-position validation appears and no point moves.
 - [ ] Check **90° angles only**. Confirm exactly one length field is editable and the other is visibly grayed.
 - [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
 - [ ] Click the grayed field. Confirm it becomes editable and the previously active field becomes grayed.
