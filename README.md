@@ -16,6 +16,8 @@ Open `index.html`, or run `python -m http.server 8765` and visit `http://localho
 
 Ceiling corners may sit outside a cropped photo. The photo is inset inside a padded work area, and that area expands to keep off-photo handles visible. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
 
+Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** selects that point as the fixed endpoint of its outgoing edge and focuses the full-length field; **Remove** deletes it while preserving the three-point minimum. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted instead of silently clearing them.
+
 ## Accuracy contract
 
 An ordinary single image has no absolute physical scale. Board mode supplies scale through the user's explicit 2-inch assumption, not through verified physical measurements. The Ceiling battens sample opens with approximate hand-placed framing and width marks and an estimated inch grid. Other samples start with no reference marks. These starter marks are editable and are not automatic board detection. No standard framing spacing or camera focal length is assumed.

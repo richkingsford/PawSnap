@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,drag:null,pointMenuIndex:null,viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -33,6 +33,14 @@ function syncEdgeControls(){
   const ready=Boolean(state.calibration)&&state.region.length>=2;
   $('edgeSelect').disabled=$('edgeAnchor').disabled=$('edgeLength').disabled=$('applyEdgeLength').disabled=!ready;
   $('edgeLengthInfo').textContent=ready?'The fixed dot stays put; the other follows the edge direction, even beyond the photo.':'Calibrate first, then set any ceiling edge.';
+}
+function positionPointMenu(){
+  const menu=$('pointMenu'),index=state.pointMenuIndex,circle=$('scene').querySelector(`[data-key="region"][data-index="${index}"]`);
+  if(index===null||!circle){menu.hidden=true;return;}
+  const dot=circle.getBoundingClientRect(),viewport=document.querySelector('.viewport').getBoundingClientRect();
+  menu.style.left=`${dot.left+dot.width/2-viewport.left+document.querySelector('.viewport').scrollLeft+10}px`;
+  menu.style.top=`${dot.top+dot.height/2-viewport.top+document.querySelector('.viewport').scrollTop+10}px`;
+  menu.hidden=false;
 }
 function validCalibration(){
   if(state.reference.length!==4)return null;
@@ -91,11 +99,12 @@ function render(){
   $('referenceInfo').textContent=state.reference.length===4?'4/4 corners · drag to adjust':`${state.reference.length}/4 corners`;
   $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
   $('boardInfo').textContent=`${state.widths.length}/4 width points${state.starter?' · starter marks — adjust as needed':''}`;
-  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
+  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
   $('measure').disabled=!state.calibration;$('finish').disabled=state.mode!=='boundary'||state.region.length<3;$('undo').disabled=!['boundary','reference','measure','boards'].includes(state.mode);
   syncEdgeControls();
   ['reference','boundary','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
+  requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null){
   const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];state.region=region.map(([x,y])=>[x*img.width,y*img.height]);state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
@@ -106,12 +115,14 @@ for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength
 $('sheetSize').addEventListener('change',render);
 document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEventListener('change',render));
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
-$('boards').onclick=()=>{state.widths=[];state.segment=[];state.starter=false;state.mode='boards';render();};
+$('boards').onclick=()=>{state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
 $('reference').onclick=()=>{state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
 $('boundary').onclick=()=>{state.region=[];state.segment=[];state.mode='boundary';render();};
 $('finish').onclick=()=>{if(state.region.length>=3){state.mode='edit';render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('undo').onclick=()=>{const key={boundary:'region',reference:'reference',measure:'segment',boards:'widths'}[state.mode];if(key){state[key].pop();render();}};
+$('calculatePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;$('edgeSelect').value=String(i);$('edgeAnchor').value='start';$('edgeLengthInfo').textContent=`Point ${i+1} stays fixed. Enter the full length to point ${(i+1)%state.region.length+1}.`;$('edgeLength').focus();$('edgeLength').select();};
+$('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};
 function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
 $('applyEdgeLength').onclick=()=>{
   try{
@@ -125,10 +136,11 @@ $('applyEdgeLength').onclick=()=>{
 };
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');
-  if(key&&['edit','reference','boundary'].includes(state.mode)){state.drag={key,index:Number(e.target.getAttribute('data-index'))};$('scene').setPointerCapture(e.pointerId);return;}
+  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
+  state.pointMenuIndex=null;$('pointMenu').hidden=true;
   if(state.mode==='reference'&&state.reference.length<4)state.reference.push(p);
   else if(state.mode==='boundary')state.region.push(p);
-  else if(state.mode==='boards'){state.widths.push(p);if(state.widths.length===4)state.mode='edit';}
+  else if(state.mode==='boards'&&state.widths.length<4)state.widths.push(p);
   else if(state.mode==='measure'&&state.calibration){if(!inside(p,state.region)){$('error').textContent='Choose a point inside the traced ceiling region.';return;}state.segment.push(p);if(state.segment.length===2)state.mode='edit';}
   render();
 });
