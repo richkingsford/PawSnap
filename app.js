@@ -125,10 +125,10 @@ $('cancelPointLengths').onclick=()=>{$('pointEditor').hidden=true;$('pointAction
 $('applyPointLengths').onclick=()=>{
   try{
     const i=state.pointMenuIndex,c=state.calibration,n=state.region.length;if(i===null||!c)throw Error('Finish Mark corners and Mark board widths first.');
-    const previous=(i+n-1)%n,next=(i+1)%n,anchor=state.region[i],previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
-    state.region[previous]=G.extendPoint(c.inverse,c.forward,anchor,state.region[previous],previousLength);state.region[next]=G.extendPoint(c.inverse,c.forward,anchor,state.region[next],nextLength);
+    const previous=(i+n-1)%n,next=(i+1)%n,previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
+    state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);
     fitStageToPoints();render();
-    $('pointEditorStatus').textContent='Lengths applied. You can edit and apply again.';
+    $('pointEditorStatus').textContent='Selected point moved; both neighboring points stayed fixed.';
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
 $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if(state.region.length<=3){$('error').textContent='A ceiling outline needs at least three points.';return;}state.region.splice(i,1);state.pointMenuIndex=null;fitStageToPoints();render();};

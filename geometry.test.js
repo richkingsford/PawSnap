@@ -32,3 +32,8 @@ const anchorPlane=G.project(c.inverse,anchor),extendedPlane=G.project(c.inverse,
 close(G.distance(anchorPlane,extendedPlane),120);close(anchor[0],G.project(c.forward,anchorPlane)[0]);close(anchor[1],G.project(c.forward,anchorPlane)[1]);
 assert.throws(()=>G.extendPoint(c.inverse,c.forward,anchor,direction,0),/positive/);
 console.log('PASS: typed edge lengths preserve the anchor and extend the moving endpoint in the calibrated plane.');
+const fixedPrevious=G.project(camera,[0,0]),fixedNext=G.project(camera,[60,0]),movingPoint=G.project(camera,[30,40]);
+const solved=G.solvePointFromLengths(c.inverse,c.forward,movingPoint,fixedPrevious,fixedNext,45,55),solvedPlane=G.project(c.inverse,solved);
+close(G.distance(solvedPlane,[0,0]),45);close(G.distance(solvedPlane,[60,0]),55);assert.ok(solvedPlane[1]>0);
+assert.throws(()=>G.solvePointFromLengths(c.inverse,c.forward,movingPoint,fixedPrevious,fixedNext,10,10),/cannot meet/);
+console.log('PASS: two edge lengths move only their shared point and preserve the nearest geometric solution.');

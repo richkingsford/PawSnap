@@ -54,6 +54,17 @@
     if(d<1e-6)throw Error('Move the two edge points apart before entering its length.');
     return project(forward,[a[0]+dx/d*length,a[1]+dy/d*length]);
   }
-  const api={convex,homography,project,area,simple,calibrate,calibrateBoards,extendPoint,distance:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1])};
+  function solvePointFromLengths(inverse,forward,current,previous,next,toPrevious,toNext){
+    if(![toPrevious,toNext].every(v=>Number.isFinite(v)&&v>0))throw Error('Enter two positive line lengths.');
+    const c=project(inverse,current),p=project(inverse,previous),q=project(inverse,next),dx=q[0]-p[0],dy=q[1]-p[1],d=Math.hypot(dx,dy);
+    if(d<1e-6)throw Error('The two neighboring points must be separated.');
+    if(d>toPrevious+toNext+1e-6||d<Math.abs(toPrevious-toNext)-1e-6)throw Error('Those two lengths cannot meet between the fixed neighboring points.');
+    const along=(toPrevious**2-toNext**2+d**2)/(2*d),height=Math.sqrt(Math.max(0,toPrevious**2-along**2)),ux=dx/d,uy=dy/d,base=[p[0]+along*ux,p[1]+along*uy];
+    const choices=[[base[0]-height*uy,base[1]+height*ux],[base[0]+height*uy,base[1]-height*ux]];
+    const chosen=distance(choices[0],c)<=distance(choices[1],c)?choices[0]:choices[1];
+    return project(forward,chosen);
+  }
+  const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  const api={convex,homography,project,area,simple,calibrate,calibrateBoards,extendPoint,solvePointFromLengths,distance};
   if(typeof module!=='undefined')module.exports=api;else root.Geometry=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
