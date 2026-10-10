@@ -14,6 +14,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Confirm the second connected-line field automatically updates to its new measured length.
 - [ ] Repeat by changing only the second connected-line length.
 - [ ] Upload a new photo and confirm four editable green ceiling corners appear immediately without Trace/Finish controls.
+- [ ] Confirm the app opens directly in permanent corner-calibration mode: four green corners and four line inputs are visible with no Mark corners button, no Mark board widths button or purple-width workflow, and no View section.
 - [ ] Make the ceiling outline temporarily invalid while all four reference corners and four purple width points remain valid; Calculate/Apply must still move only the selected point by using the reference calibration directly.
 - [ ] With incomplete calibration markers, confirm the popup reports exact completion counts instead of a generic “finish calibration” message.
 - [ ] Change both connected-line lengths and confirm the selected point moves to the nearest valid intersection while every other point remains fixed.
