@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],edgeLengths:[],segment:[],mode:'edit',calibration:null,manualCalibration:null,outlineDimensions:null,sizePreset:null,layoutOrientation:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],edgeLengths:[],edgeAxes:[],segment:[],mode:'edit',calibration:null,manualCalibration:null,outlineDimensions:null,sizePreset:null,layoutOrientation:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -64,7 +64,7 @@ function rectangleMetrics(c){
   return {origin,ux,uy,vx,vy,width,depth};
 }
 function lockHorizontalEdges(){if(state.region.length!==4)return;for(const [a,b] of [[0,1],[2,3]]){const y=(state.region[a][1]+state.region[b][1])/2;state.region[a][1]=state.region[b][1]=y;}}
-function horizontalNeighbors(start){const n=state.region.length,a=state.region[start];return [(start+n-1)%n,(start+1)%n].filter(j=>{const b=state.region[j];return Math.abs(b[1]-a[1])<=Math.abs(b[0]-a[0]);});}
+function horizontalNeighbors(start){const n=state.region.length;if(state.edgeAxes.length===n)return [[(start+n-1)%n,(start+n-1)%n],[start,(start+1)%n]].filter(([edge])=>state.edgeAxes[edge]==='x').map(([,point])=>point);const a=state.region[start];return [(start+n-1)%n,(start+1)%n].filter(j=>{const b=state.region[j];return Math.abs(b[1]-a[1])<=Math.abs(b[0]-a[0]);});}
 function snapNearHorizontalEdges(start,y,neighbors=horizontalNeighbors(start)){
   if(state.region.length<2)return;state.region[start][1]=y;for(const j of neighbors)state.region[j][1]=y;
 }
@@ -75,17 +75,17 @@ function guessedEdgeLengths(){
   return lengths;
 }
 function balanceOrthogonalOutline(c,editedIndex,editedLength,doRender=true){
-  const n=state.region.length,plane=state.region.map(p=>G.project(c.inverse,p)),stored=state.edgeLengths.length===n?state.edgeLengths:null,edges=plane.map((p,i)=>{const q=plane[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],axis=Math.abs(dx)>=Math.abs(dy)?'x':'y',component=Math.abs(dx)>=Math.abs(dy)?dx:dy;return {axis,sign:Math.sign(component)||1,length:Math.max(.1,stored?stored[i]:Math.hypot(dx,dy))};});
+  const n=state.region.length,plane=state.region.map(p=>G.project(c.inverse,p)),stored=state.edgeLengths.length===n?state.edgeLengths:null,storedAxes=state.edgeAxes.length===n?state.edgeAxes:null,edges=plane.map((p,i)=>{const q=plane[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],axis=storedAxes?storedAxes[i]:Math.abs(dx)>=Math.abs(dy)?'x':'y',component=axis==='x'?dx:dy;return {axis,sign:Math.sign(component)||1,length:Math.max(.1,stored?stored[i]:Math.hypot(dx,dy))};});
   edges[editedIndex].length=editedLength;
   for(const axis of ['x','y']){const groups={1:[],[-1]:[]};edges.forEach((e,i)=>{if(e.axis===axis)groups[e.sign].push(i);});if(!groups[1].length||!groups[-1].length)throw Error(`The outline needs walls in both ${axis==='x'?'horizontal':'vertical'} directions.`);const edited=edges[editedIndex].axis===axis?edges[editedIndex].sign:null,fixedSign=edited||1,resizeSign=-fixedSign,target=groups[fixedSign].reduce((sum,i)=>sum+edges[i].length,0),current=groups[resizeSign].reduce((sum,i)=>sum+edges[i].length,0)||1;groups[resizeSign].forEach(i=>edges[i].length=Math.max(.1,edges[i].length*target/current));}
   const next=[[...plane[0]]];for(let i=0;i<n-1;i++){const p=next[i],e=edges[i];next.push(e.axis==='x'?[p[0]+e.sign*e.length,p[1]]:[p[0],p[1]+e.sign*e.length]);}
   const closing=edges[n-1],last=next[n-1],origin=next[0],gap=closing.axis==='x'?Math.abs(origin[0]-last[0]):Math.abs(origin[1]-last[1]);if(gap<1||edges.some(e=>e.length<1))throw Error('That move would collapse a wall below 1 inch.');closing.length=gap;
-  const projected=next.map(p=>G.project(c.forward,p));if(!G.simple(projected))throw Error('That move would cross the ceiling outline.');state.region=projected;state.edgeLengths=edges.map(e=>e.length);state.manualCalibration={forward:c.forward,inverse:c.inverse};state.outlineDimensions=null;state.sizePreset=null;state.layoutOrientation=null;fitStageToPoints();if(doRender)render();
+  const projected=next.map(p=>G.project(c.forward,p));if(!G.simple(projected))throw Error('That move would cross the ceiling outline.');state.region=projected;state.edgeLengths=edges.map(e=>e.length);state.edgeAxes=edges.map(e=>e.axis);state.manualCalibration={forward:c.forward,inverse:c.inverse};state.outlineDimensions=null;state.sizePreset=null;state.layoutOrientation=null;fitStageToPoints();if(doRender)render();
 }
 function setRectangleDimensions(c,width,depth,sizePreset=null){
   if(state.region.length!==4||![width,depth].every(v=>Number.isFinite(v)&&v>0))throw Error('Enter positive lengths for one side and one adjacent side.');
   const m=rectangleMetrics(c),plane=[[0,0],[width,0],[width,depth],[0,depth]].map(([x,y])=>[m.origin[0]+m.ux*x+m.vx*y,m.origin[1]+m.uy*x+m.vy*y]);
-  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.edgeLengths=[width,depth,width,depth];state.manualCalibration=null;state.outlineDimensions={width,depth};state.sizePreset=sizePreset;fitStageToPoints();render();
+  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.edgeLengths=[width,depth,width,depth];state.edgeAxes=['x','y','x','y'];state.manualCalibration=null;state.outlineDimensions={width,depth};state.sizePreset=sizePreset;fitStageToPoints();render();
 }
 function renderCornerLineInputs(c){
   if(state.mode!=='corners'||viewMode()==='photo'||state.region.length<3)return;const n=state.region.length,values=state.edgeLengths.length===n?state.edgeLengths:c?state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%n]))):guessedEdgeLengths();
@@ -193,7 +193,7 @@ function render(){
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);lockHorizontalEdges();state.edgeLengths=guessedEdgeLengths();state.manualCalibration=null;state.outlineDimensions=null;state.sizePreset=null;state.layoutOrientation=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);lockHorizontalEdges();state.edgeLengths=guessedEdgeLengths();state.edgeAxes=['x','y','x','y'];state.manualCalibration=null;state.outlineDimensions=null;state.sizePreset=null;state.layoutOrientation=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
@@ -203,7 +203,7 @@ document.querySelectorAll('input[name="cutMeasure"]').forEach(radio=>radio.addEv
 function applySizePreset(id,width,depth){
   $('sheetSize').value='48x96';selectView('sheets');state.segment=[];state.mode='corners';state.pointMenuIndex=null;state.layoutOrientation='rows';$('pointMenu').hidden=true;
   let c=null;try{c=pointEditCalibration();}catch(e){try{c=validCalibration();}catch(error){}}
-  if(c)setRectangleDimensions(c,width,depth,id);else{state.edgeLengths=[width,depth,width,depth];state.outlineDimensions={width,depth};state.sizePreset=id;fitStageToPoints();render();}
+  if(c)setRectangleDimensions(c,width,depth,id);else{state.edgeLengths=[width,depth,width,depth];state.edgeAxes=['x','y','x','y'];state.outlineDimensions={width,depth};state.sizePreset=id;fitStageToPoints();render();}
 }
 $('presetNoCuts').onclick=()=>applySizePreset('no-cuts',288,96);
 $('presetTwoCuts').onclick=()=>applySizePreset('two-cuts',144,96);
