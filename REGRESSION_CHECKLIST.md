@@ -37,6 +37,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.
 - [ ] Confirm cut sheets use a solid amber fill with no yellow interior stripes.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
+- [ ] After **Add dot**, confirm there is still exactly one editable inch input for every outline edge. Drag the new point until either adjacent edge reaches 45° or less from horizontal; confirm that edge immediately becomes exactly horizontal and its connected endpoint follows. Repeat with arrow keys and a typed edge length.
 - [ ] Open **Change all points** with and without completed scale marks. Confirm there is exactly one inch-length input for every outline line and no missing-corners message replaces the fields.
 - [ ] On a calibrated photo, change one line and Apply. Confirm its opposite line matches, opposite lines stay parallel, and every corner remains 90°.
 - [ ] On an uncalibrated four-corner photo, enter Line 1 and confirm Line 3 matches automatically; enter Line 2 and confirm Line 4 matches. Apply without scale marks and confirm area, grid, and sheets become calibrated from those dimensions.

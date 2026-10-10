@@ -20,6 +20,8 @@ Clicking a green ceiling-outline point, or releasing it after a drag, opens a po
 
 **Add dot** remains available for a user-confirmed non-rectangular ceiling; it is never added automatically. **Change all points** opens one inch-length field for every ceiling-outline line. For the normal four-corner ceiling, entering one side matches its opposite and entering one adjacent side completes the rectangle. Apply reshapes the green outline and uses those dimensions as the ceiling scale.
 
+After a dot is added, every outline edge retains its editable inch input. Any edge whose screen angle reaches 45° or less from horizontal snaps immediately to a perfectly horizontal line; its connected endpoint moves with it. The same rule applies during pointer dragging, keyboard movement, and typed line-length changes.
+
 If both edited lengths cannot geometrically meet while their neighboring dots remain fixed, live validation marks the fields invalid and shows the exact allowable interval for each value. Apply is blocked and no point moves until the pair is valid. Editing only one field remains valid: the selected point moves to satisfy it and the other displayed length recalculates.
 
 The Calculate popup always assumes 90° corners. It keeps one connected-line field editable; clicking the gray field switches the active room dimension. Apply matches the opposite side and maintains the rectangular lock.

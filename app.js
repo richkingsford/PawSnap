@@ -7,7 +7,7 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,outlineDimensions:null,sizePreset:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,manualCalibration:null,outlineDimensions:null,sizePreset:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
@@ -40,6 +40,7 @@ function positionPointMenu(){
 }
 function validCalibration(){
   if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,state.region);
+  if(state.manualCalibration&&state.region.length>=3)return {...state.manualCalibration,plane:state.region.map(p=>G.project(state.manualCalibration.inverse,p))};
   if(state.reference.length!==4)return null;
   if(boardMode()&&state.widths.length!==4)return null;
   if(!boardMode()&&(!$('confirmed').checked||!$('refWidth').value||!$('refDepth').value))return null;
@@ -52,6 +53,7 @@ function validCalibration(){
 }
 function pointEditCalibration(){
   if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,[]);
+  if(state.manualCalibration&&state.region.length>=3)return {...state.manualCalibration,plane:state.region.map(p=>G.project(state.manualCalibration.inverse,p))};
   if(state.reference.length!==4||state.widths.length!==4)throw Error('Add scale marks to calculate inch lengths.');
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
 }
@@ -60,17 +62,21 @@ function rectangleMetrics(c){
   return {origin,ux,uy,vx,vy,width,depth};
 }
 function lockHorizontalEdges(){if(state.region.length!==4)return;for(const [a,b] of [[0,1],[2,3]]){const y=(state.region[a][1]+state.region[b][1])/2;state.region[a][1]=state.region[b][1]=y;}}
+function snapNearHorizontalEdges(start,y){
+  const n=state.region.length;if(n<2)return;state.region[start][1]=y;const queue=[start],seen=new Set([start]);
+  while(queue.length){const i=queue.shift();for(const j of [(i+n-1)%n,(i+1)%n]){const a=state.region[i],b=state.region[j];if(Math.abs(b[1]-a[1])<=Math.abs(b[0]-a[0])&&!seen.has(j)){b[1]=a[1];seen.add(j);queue.push(j);}}}
+}
 function setRectangleDimensions(c,width,depth,sizePreset=null){
   if(state.region.length!==4||![width,depth].every(v=>Number.isFinite(v)&&v>0))throw Error('Enter positive lengths for one side and one adjacent side.');
   const m=rectangleMetrics(c),plane=[[0,0],[width,0],[width,depth],[0,depth]].map(([x,y])=>[m.origin[0]+m.ux*x+m.vx*y,m.origin[1]+m.uy*x+m.vy*y]);
-  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.outlineDimensions={width,depth};state.sizePreset=sizePreset;fitStageToPoints();render();
+  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.manualCalibration=null;state.outlineDimensions={width,depth};state.sizePreset=sizePreset;fitStageToPoints();render();
 }
 function renderCornerLineInputs(c){
-  if(state.mode!=='corners'||viewMode()==='photo'||state.region.length!==4)return;const values=c?state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%4]))):['','','',''];
+  if(state.mode!=='corners'||viewMode()==='photo'||state.region.length<3)return;const n=state.region.length,values=c?state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%n]))):state.region.map(()=> '');
   state.region.forEach((p,i)=>{const q=state.region[(i+1)%4],mid=[(p[0]+q[0])/2,(p[1]+q[1])/2],box=svg('foreignObject',{x:mid[0]-47,y:mid[1]-38,width:94,height:30,'data-line-input':i}),input=document.createElementNS('http://www.w3.org/1999/xhtml','input');input.type='number';input.min='.1';input.step='any';input.inputMode='decimal';input.placeholder=`Line ${i+1} inches`;input.setAttribute('aria-label',`Line ${i+1} length in inches`);input.title='Enter inches, then press Enter or click away';input.value=values[i]===''?'':values[i].toFixed(1);input.style.cssText='width:90px;height:27px;margin:0;padding:4px 6px;border:2px solid #c7f36a;border-radius:4px;background:white;color:#20231f;font:600 12px Manrope';
     const validate=()=>{const value=Number(input.value),valid=input.value.trim()!==''&&Number.isFinite(value)&&value>0;input.setCustomValidity(valid?'':'Enter a length greater than 0 inches.');input.toggleAttribute('aria-invalid',!valid);return valid?value:null;};
-    const mirror=()=>{const value=validate();if(value===null)return;const partner=$('scene').querySelector(`foreignObject[data-line-input="${(i+2)%4}"] input`);if(partner)partner.value=value.toFixed(1);};
-    const apply=()=>{const value=validate();if(value===null){input.reportValidity();return;}mirror();if(!c){const fields=[...$('scene').querySelectorAll('foreignObject[data-line-input] input')].map(field=>Number(field.value));if(fields.every(v=>Number.isFinite(v)&&v>0)){state.outlineDimensions={width:(fields[0]+fields[2])/2,depth:(fields[1]+fields[3])/2};render();}return;}const m=rectangleMetrics(c);setRectangleDimensions(c,i%2===0?value:m.width,i%2===1?value:m.depth);};
+    const mirror=()=>{const value=validate();if(value===null||n!==4)return;const partner=$('scene').querySelector(`foreignObject[data-line-input="${(i+2)%4}"] input`);if(partner)partner.value=value.toFixed(1);};
+    const apply=()=>{const value=validate();if(value===null){input.reportValidity();return;}mirror();if(!c){if(n!==4){input.setCustomValidity('Enter two adjacent room dimensions before adding extra points.');input.reportValidity();return;}const fields=[...$('scene').querySelectorAll('foreignObject[data-line-input] input')].map(field=>Number(field.value));if(fields.every(v=>Number.isFinite(v)&&v>0)){state.outlineDimensions={width:(fields[0]+fields[2])/2,depth:(fields[1]+fields[3])/2};render();}return;}if(n===4){const m=rectangleMetrics(c);setRectangleDimensions(c,i%2===0?value:m.width,i%2===1?value:m.depth);return;}const target=(i+1)%n;state.region[target]=G.extendPoint(c.inverse,c.forward,state.region[i],state.region[target],value);snapNearHorizontalEdges(target,state.region[target][1]);fitStageToPoints();render();};
     input.addEventListener('pointerdown',e=>e.stopPropagation());input.addEventListener('focus',()=>input.select());input.addEventListener('input',mirror);input.addEventListener('change',apply);input.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();apply();}});box.append(input);
   });
 }
@@ -171,7 +177,7 @@ function render(){
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.sizePreset=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;lockHorizontalEdges();render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.manualCalibration=null;state.outlineDimensions=null;state.sizePreset=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;lockHorizontalEdges();render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
@@ -218,9 +224,9 @@ $('applyPointLengths').onclick=()=>{
   }catch(e){$('pointEditorStatus').textContent=e.message;}
 };
 $('addPoint').onclick=()=>{
-  const i=state.pointMenuIndex;if(i===null)return;const [x,y]=state.region[i],step=Math.max(24,Math.min(state.image.width,state.image.height)*.08),rightRoom=state.image.width-x,belowRoom=state.image.height-y,directions=rightRoom>=step||rightRoom>=belowRoom?[[1,0],[0,1]]:[[0,1],[1,0]];let point=null,insertionIndex=i+1;
+  const i=state.pointMenuIndex;if(i===null)return;let existingCalibration=null;try{existingCalibration=pointEditCalibration();}catch(e){}const [x,y]=state.region[i],step=Math.max(24,Math.min(state.image.width,state.image.height)*.08),rightRoom=state.image.width-x,belowRoom=state.image.height-y,directions=rightRoom>=step||rightRoom>=belowRoom?[[1,0],[0,1]]:[[0,1],[1,0]];let point=null,insertionIndex=i+1;
   findPoint:for(const factor of [1,.5,.25,.125])for(const [dx,dy] of directions)for(const at of [i+1,i]){const candidate=[x+step*factor*dx,y+step*factor*dy],outline=state.region.map(p=>[...p]);outline.splice(at,0,candidate);if(G.simple(outline)){point=candidate;insertionIndex=at;break findPoint;}}if(!point){$('error').textContent='There is not enough clear space to add a dot to the right or below this point.';return;}
-  state.outlineDimensions=null;state.region.splice(insertionIndex,0,point);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
+  state.outlineDimensions=null;if(existingCalibration)state.manualCalibration={forward:existingCalibration.forward,inverse:existingCalibration.inverse};state.region.splice(insertionIndex,0,point);snapNearHorizontalEdges(insertionIndex,point[1]);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
 };
 function openAllPointsEditor(message='Each field is one ceiling-outline line in inches.'){
   const list=$('allPointsList');list.replaceChildren();let c=null;try{c=pointEditCalibration();}catch(e){}
@@ -249,9 +255,9 @@ $('scene').addEventListener('pointerdown',e=>{
   else if(state.mode==='measure'&&state.calibration){if(!inside(p,state.region)){$('error').textContent='Choose a point inside the traced ceiling region.';return;}state.segment.push(p);if(state.segment.length===2)state.mode='edit';}
   render();
 });
-$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;if(state.drag.key==='region'&&state.region.length===4){const linked=state.drag.index%2===0?state.drag.index+1:state.drag.index-1;state.region[linked][1]=p[1];}state[state.drag.key][state.drag.index]=p;render();});
+$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;state[state.drag.key][state.drag.index]=p;if(state.drag.key==='region')snapNearHorizontalEdges(state.drag.index,p[1]);render();});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('scene').addEventListener(type,()=>{if(state.drag){state.drag=null;fitStageToPoints();render();}});
-$('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,raw=[old[0]+m[0]*step,old[1]+m[1]*step],mayLeave=key==='region'||key==='reference',p=mayLeave?raw:[Math.max(0,Math.min(state.image.width,raw[0])),Math.max(0,Math.min(state.image.height,raw[1]))];if(key==='segment'&&!inside(p,state.region))return;if(key==='region'&&state.region.length===4){const linked=index%2===0?index+1:index-1;state.region[linked][1]=p[1];}state[key][index]=p;render();const moved=$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`);if(moved)moved.focus();});
+$('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,raw=[old[0]+m[0]*step,old[1]+m[1]*step],mayLeave=key==='region'||key==='reference',p=mayLeave?raw:[Math.max(0,Math.min(state.image.width,raw[0])),Math.max(0,Math.min(state.image.height,raw[1]))];if(key==='segment'&&!inside(p,state.region))return;state[key][index]=p;if(key==='region')snapNearHorizontalEdges(index,p[1]);render();const moved=$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`);if(moved)moved.focus();});
 const exportButton=$('export');if(exportButton)exportButton.onclick=async()=>{
   try{const clone=$('scene').cloneNode(true),canvas=document.createElement('canvas');canvas.width=state.image.width;canvas.height=state.image.height;const ctx=canvas.getContext('2d');ctx.drawImage(state.image,0,0);clone.querySelector('image').setAttribute('href',canvas.toDataURL('image/png'));clone.setAttribute('width',canvas.width);clone.setAttribute('height',canvas.height);clone.removeAttribute('style');const text=document.createElementNS(NS,'text');text.setAttribute('x',10);text.setAttribute('y',canvas.height-16);text.setAttribute('font-size',12);text.setAttribute('fill','white');text.setAttribute('stroke','#162016');text.setAttribute('paint-order','stroke');text.setAttribute('stroke-width',3);text.textContent=state.calibration?`${boardMode()?'ASSUMED 2-INCH BOARD WIDTHS':`Reference ${$('refWidth').value} × ${$('refDepth').value} in`} | grid ${$('spacing').value} in | Estimates; accuracy not verified`:'UNCALIBRATED — NO INCH SCALE';clone.append(text);const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'}));const link=document.createElement('a');link.href=url;link.download='ceiling-measurement.svg';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('error').textContent=`Export failed: ${e.message}`;}
 };
