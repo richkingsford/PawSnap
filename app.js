@@ -7,11 +7,11 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,manualCalibration:null,outlineDimensions:null,sizePreset:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,manualCalibration:null,outlineDimensions:null,sizePreset:null,layoutOrientation:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
-const fullPerimeterVisible=()=>Boolean(state.sizePreset)||(state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1));
+const fullPerimeterVisible=()=>Boolean(state.outlineDimensions||state.sizePreset)||(state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1));
 function conservativeCorners(points,confidentExtraCorners=false){
   const result=points.map(p=>[...p]);if(confidentExtraCorners)return result;
   while(result.length>4){let remove=0,smallest=Infinity;for(let i=0;i<result.length;i++){const a=result[(i+result.length-1)%result.length],p=result[i],b=result[(i+1)%result.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1,distance=Math.abs(dy*p[0]-dx*p[1]+b[0]*a[1]-b[1]*a[0])/length;if(distance<smallest){smallest=distance;remove=i;}}result.splice(remove,1);}return result;
@@ -177,15 +177,15 @@ function render(){
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.manualCalibration=null;state.outlineDimensions=null;state.sizePreset=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;lockHorizontalEdges();render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=[];state.widths=[];state.starter=false;state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.manualCalibration=null;state.outlineDimensions=null;state.sizePreset=null;state.layoutOrientation=null;state.mode='corners';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;lockHorizontalEdges();render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
 for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength'])$(id).addEventListener('input',()=>{if(['refWidth','refDepth'].includes(id))$('confirmed').checked=false;render();});
-$('sheetSize').addEventListener('change',render);
+$('sheetSize').addEventListener('change',()=>{state.layoutOrientation=null;render();});
 document.querySelectorAll('input[name="cutMeasure"]').forEach(radio=>radio.addEventListener('change',render));
 function applySizePreset(id,width,depth){
-  $('sheetSize').value='48x96';selectView('sheets');state.segment=[];state.mode='corners';state.pointMenuIndex=null;$('pointMenu').hidden=true;
+  $('sheetSize').value='48x96';selectView('sheets');state.segment=[];state.mode='corners';state.pointMenuIndex=null;state.layoutOrientation='rows';$('pointMenu').hidden=true;
   let c=null;try{c=pointEditCalibration();}catch(e){try{c=validCalibration();}catch(error){}}
   if(c)setRectangleDimensions(c,width,depth,id);else{state.outlineDimensions={width,depth};state.sizePreset=id;fitStageToPoints();render();}
 }
@@ -226,7 +226,7 @@ $('applyPointLengths').onclick=()=>{
 $('addPoint').onclick=()=>{
   const i=state.pointMenuIndex;if(i===null)return;let existingCalibration=null;try{existingCalibration=pointEditCalibration();}catch(e){}const [x,y]=state.region[i],step=Math.max(24,Math.min(state.image.width,state.image.height)*.08),rightRoom=state.image.width-x,belowRoom=state.image.height-y,directions=rightRoom>=step||rightRoom>=belowRoom?[[1,0],[0,1]]:[[0,1],[1,0]];let point=null,insertionIndex=i+1;
   findPoint:for(const factor of [1,.5,.25,.125])for(const [dx,dy] of directions)for(const at of [i+1,i]){const candidate=[x+step*factor*dx,y+step*factor*dy],outline=state.region.map(p=>[...p]);outline.splice(at,0,candidate);if(G.simple(outline)){point=candidate;insertionIndex=at;break findPoint;}}if(!point){$('error').textContent='There is not enough clear space to add a dot to the right or below this point.';return;}
-  state.outlineDimensions=null;if(existingCalibration)state.manualCalibration={forward:existingCalibration.forward,inverse:existingCalibration.inverse};state.region.splice(insertionIndex,0,point);snapNearHorizontalEdges(insertionIndex,point[1]);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
+  state.outlineDimensions=null;state.layoutOrientation=null;if(existingCalibration)state.manualCalibration={forward:existingCalibration.forward,inverse:existingCalibration.inverse};state.region.splice(insertionIndex,0,point);snapNearHorizontalEdges(insertionIndex,point[1]);state.pointMenuIndex=insertionIndex;fitStageToPoints();render();requestAnimationFrame(positionPointMenu);
 };
 function openAllPointsEditor(message='Each field is one ceiling-outline line in inches.'){
   const list=$('allPointsList');list.replaceChildren();let c=null;try{c=pointEditCalibration();}catch(e){}
