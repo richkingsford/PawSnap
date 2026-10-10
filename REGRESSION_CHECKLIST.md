@@ -30,6 +30,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Click **No cuts required** and confirm a 24 × 8 ft ceiling displays six full 4 × 8 ft sheets in two rows of three with no cuts.
 - [ ] Click **2 cuts required** and confirm a 12 × 8 ft ceiling displays two full sheets plus two half-sheet pieces, exactly two cuts, and three purchased sheets total.
 - [ ] In Mark corners, drag each green endpoint vertically. Confirm its partner on the same horizontal edge moves to the identical Y position, while the other horizontal edge does not move.
+- [ ] Repeat every four-corner vertical drag in Sheets/Grid Adjust mode and with Up/Down arrow keys. The linked endpoint must move to the identical Y coordinate; a horizontal green edge must never become diagonal in any editable mode.
 - [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.
 - [ ] Confirm cut sheets use a solid amber fill with no yellow interior stripes.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
