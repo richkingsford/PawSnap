@@ -1,4 +1,14 @@
 let sheetCacheKey='',sheetCache=null;
+function cutMeasurementMode(){return document.querySelector('input[name="cutMeasure"]:checked')?.value||'keep';}
+function cutDescription(s,mode=cutMeasurementMode(),compact=false){
+  const n=value=>Number(value.toFixed(1)),keep=`${n(s.width)}×${n(s.height)}″`;
+  if(mode==='keep')return compact?`KEEP ${keep}`:`Keep ${n(s.width)}″ × ${n(s.height)}″`;
+  const dx=Math.max(0,s.w-s.width),dy=Math.max(0,s.h-s.height);
+  if(s.rectangular&&dx>1e-6&&dy<=1e-6)return compact?`AWAY ${n(dx)}×${n(s.h)}″`:`Cut away ${n(dx)}″ × ${n(s.h)}″`;
+  if(s.rectangular&&dy>1e-6&&dx<=1e-6)return compact?`AWAY ${n(s.w)}×${n(dy)}″`:`Cut away ${n(s.w)}″ × ${n(dy)}″`;
+  if(s.rectangular&&dx>1e-6&&dy>1e-6)return compact?`AWAY ${n(dx)}″ H + ${n(dy)}″ V`:`Cut away ${n(dx)}″ horizontally and ${n(dy)}″ vertically`;
+  return compact?`AWAY CUSTOM · KEEP ${keep}`:`Cut away the custom trim outside the ${n(s.width)}″ × ${n(s.height)}″ kept bounds`;
+}
 function sheetLabelPoint(polygons){
   const rings=polygons.reduce((best,p)=>G.area(p[0])>G.area(best[0])?p:best,polygons[0]);
   const ys=[...new Set(rings.flat().map(p=>p[1]))].sort((a,b)=>a-b);let best=null;
@@ -33,11 +43,11 @@ function drawDrywall(c,view='sheets',complete=true){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':'CUT'} S${s.id}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
+      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':`CUT`} S${s.id}${needsCut?` · ${cutDescription(s,cutMeasurementMode(),true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
       sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
       if(!complete)continue;
       const row=document.createElement('div');row.className='sheet-cut-row';const desc=document.createElement('span');
-      desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':s.rectangular?`Cut to ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″`:`Custom trim · ≈ ${s.width.toFixed(1)}″ × ${s.height.toFixed(1)}″ bounds`} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
+      desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':cutDescription(s)} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
       const button=document.createElement('button');button.textContent='Cut outline';button.setAttribute('aria-label',`Download cut outline for sheet S${s.id}`);button.onclick=()=>downloadSheetOutline(s);
       row.append(desc,button);list.append(row);
     }

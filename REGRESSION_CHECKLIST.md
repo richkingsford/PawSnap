@@ -31,6 +31,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Click **No cuts required** and confirm a 24 × 8 ft ceiling displays six full 4 × 8 ft sheets in exactly two rows and three columns with no cuts; the optimizer must not rotate this preset into one row of six.
 - [ ] After selecting **No cuts required**, drag every green corner horizontally and vertically and repeat with arrow keys. Confirm the preset remains selected and the layout remains exactly two rows by three columns after every resize.
 - [ ] Click **2 cuts required** and confirm a 12 × 8 ft ceiling displays two full sheets plus two half-sheet pieces, exactly two cuts, and three purchased sheets total.
+- [ ] With **2 cuts required**, confirm every orange overlay label and cut-list row states its inch measurements. Toggle **Keep / Cut away** and confirm both orange labels change between `KEEP 48×48″` and `AWAY 48×48″` while sheet positions, count, and colors remain unchanged.
 - [ ] In Mark corners, drag each green endpoint vertically. Confirm its partner on the same horizontal edge moves to the identical Y position, while the other horizontal edge does not move.
 - [ ] Repeat every four-corner vertical drag in Sheets/Grid Adjust mode and with Up/Down arrow keys. The linked endpoint must move to the identical Y coordinate; a horizontal green edge must never become diagonal in any editable mode.
 - [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.

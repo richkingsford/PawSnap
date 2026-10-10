@@ -177,6 +177,7 @@ samples.forEach(s=>{const b=document.createElement('button'),img=document.create
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
 for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength'])$(id).addEventListener('input',()=>{if(['refWidth','refDepth'].includes(id))$('confirmed').checked=false;render();});
 $('sheetSize').addEventListener('change',render);
+document.querySelectorAll('input[name="cutMeasure"]').forEach(radio=>radio.addEventListener('change',render));
 function applySizePreset(id,width,depth){
   $('sheetSize').value='48x96';selectView('sheets');state.segment=[];state.mode='corners';state.pointMenuIndex=null;$('pointMenu').hidden=true;
   let c=null;try{c=pointEditCalibration();}catch(e){try{c=validCalibration();}catch(error){}}
