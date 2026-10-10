@@ -26,7 +26,7 @@ The Calculate popup always assumes 90° corners. It keeps one connected-line fie
 
 The green ceiling boundary and its corner handles remain visible and clickable in Sheets and Grid views after calibration or dimension entry, so Calculate and point adjustment never disappear after Apply. Photo view intentionally hides overlays.
 
-Mark corners always uses a four-point rectangular ceiling. It displays an editable inch input above every green edge. Committing a value with Enter or blur changes that dimension, gives the opposite edge the same length, and preserves parallel opposite sides and four 90° corners in the calibrated ceiling plane.
+Mark corners always uses a four-point rectangular ceiling. It displays an editable inch input above every green edge. Focusing a box selects its current value for easy replacement. Typing mirrors the value into the opposite side immediately; pressing Enter or clicking away commits the inches, changes that dimension, and preserves parallel opposite sides and four 90° corners in the calibrated ceiling plane. Blank, zero, and negative entries are rejected with an inches-specific validation message.
 
 The two endpoints of each horizontal green edge are vertically linked in Mark corners. Dragging either endpoint up or down moves its partner to the identical image Y position, keeping the edge perfectly horizontal. Typed dimension changes reapply the same horizontal lock.
 

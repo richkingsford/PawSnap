@@ -26,6 +26,7 @@ Run this checklist after every interaction or geometry change.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
 - [ ] Open every sample and confirm exactly four green corners; there are no automatic extra-corner exceptions.
 - [ ] Enter Mark corners and confirm one editable inch input appears above each of the four green edges. Change each orientation in turn and confirm the opposite edge matches, both opposite edges remain parallel, and all four corners remain 90°.
+- [ ] Focus each inline line input, type a positive inch value, and press Enter. Repeat by clicking away instead. Confirm both commit paths reshape that dimension, mirror the opposite input, preserve the adjacent dimension, and reject blank, zero, or negative values with a clear inches-specific message.
 - [ ] In Mark corners, drag each green endpoint vertically. Confirm its partner on the same horizontal edge moves to the identical Y position, while the other horizontal edge does not move.
 - [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.
 - [ ] Confirm cut sheets use a solid amber fill with no yellow interior stripes.
