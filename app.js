@@ -7,11 +7,11 @@ const samples=[
   {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
-const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,outlineDimensions:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
+const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,outlineDimensions:null,sizePreset:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
-const fullPerimeterVisible=()=>state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1);
+const fullPerimeterVisible=()=>Boolean(state.sizePreset)||(state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1));
 function conservativeCorners(points,confidentExtraCorners=false){
   const result=points.map(p=>[...p]);if(confidentExtraCorners)return result;
   while(result.length>4){let remove=0,smallest=Infinity;for(let i=0;i<result.length;i++){const a=result[(i+result.length-1)%result.length],p=result[i],b=result[(i+1)%result.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1,distance=Math.abs(dy*p[0]-dx*p[1]+b[0]*a[1]-b[1]*a[0])/length;if(distance<smallest){smallest=distance;remove=i;}}result.splice(remove,1);}return result;
@@ -60,10 +60,10 @@ function rectangleMetrics(c){
   return {origin,ux,uy,vx,vy,width,depth};
 }
 function lockHorizontalEdges(){if(state.region.length!==4)return;for(const [a,b] of [[0,1],[2,3]]){const y=(state.region[a][1]+state.region[b][1])/2;state.region[a][1]=state.region[b][1]=y;}}
-function setRectangleDimensions(c,width,depth){
+function setRectangleDimensions(c,width,depth,sizePreset=null){
   if(state.region.length!==4||![width,depth].every(v=>Number.isFinite(v)&&v>0))throw Error('Enter positive lengths for one side and one adjacent side.');
   const m=rectangleMetrics(c),plane=[[0,0],[width,0],[width,depth],[0,depth]].map(([x,y])=>[m.origin[0]+m.ux*x+m.vx*y,m.origin[1]+m.uy*x+m.vy*y]);
-  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.outlineDimensions={width,depth};fitStageToPoints();render();
+  state.region=plane.map(p=>G.project(c.forward,p));lockHorizontalEdges();state.outlineDimensions={width,depth};state.sizePreset=sizePreset;fitStageToPoints();render();
 }
 function renderCornerLineInputs(c){
   if(state.mode!=='corners'||viewMode()==='photo'||state.region.length!==4)return;const values=c?state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%4]))):['','','',''];
@@ -164,6 +164,7 @@ function render(){
   });
   renderCornerLineInputs(state.calibration);
   $('referenceInfo').textContent='4 ceiling corners · drag or enter lengths';
+  $('presetNoCuts').classList.toggle('active',state.sizePreset==='no-cuts');$('presetTwoCuts').classList.toggle('active',state.sizePreset==='two-cuts');
   $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
   const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',corners:'Drag green corners or edit a line length. Opposite sides stay equal.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
@@ -172,12 +173,19 @@ function render(){
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
-  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
+  const version=++state.version;const img=new Image();img.onload=()=>{if(version!==state.version)return;state.image=img;state.reference=starter?starter.reference.map(p=>[...p]):[];state.widths=starter?starter.widths.map(p=>[...p]):[];state.starter=Boolean(starter);state.segment=[];const suggested=region.length?region:[[.08,.08],[.92,.08],[.92,.48],[.08,.48]];state.region=conservativeCorners(suggested,confidentExtraCorners).map(([x,y])=>[x*img.width,y*img.height]);state.outlineDimensions=null;state.sizePreset=null;state.mode='edit';state.drag=null;state.viewBox=null;fitStageToPoints();selectView('sheets');$('refWidth').value=$('refDepth').value=$('checkLength').value='';$('confirmed').checked=false;$('zoom').value='1';$('photoTitle').textContent=name;render();};img.onerror=()=>{if(version===state.version)$('error').textContent='Could not load this image. Try a JPEG, PNG, or WebP file.';};img.src=url;
 }
 samples.forEach(s=>{const b=document.createElement('button'),img=document.createElement('img');img.src=s.url;img.alt='';b.append(img,document.createTextNode(s.name));b.onclick=()=>loadPhoto(s.url,s.name,s.region,s.starter,s.confidentExtraCorners);$('samples').append(b);});
 $('photo').onchange=()=>{const f=$('photo').files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>loadPhoto(reader.result,f.name);reader.onerror=()=>$('error').textContent='Could not read photo.';reader.readAsDataURL(f);};
 for(const id of ['refWidth','refDepth','confirmed','spacing','zoom','checkLength'])$(id).addEventListener('input',()=>{if(['refWidth','refDepth'].includes(id))$('confirmed').checked=false;render();});
 $('sheetSize').addEventListener('change',render);
+function applySizePreset(id,width,depth){
+  $('sheetSize').value='48x96';selectView('sheets');state.segment=[];state.mode='edit';state.pointMenuIndex=null;$('pointMenu').hidden=true;
+  let c=null;try{c=pointEditCalibration();}catch(e){try{c=validCalibration();}catch(error){}}
+  if(c)setRectangleDimensions(c,width,depth,id);else{state.outlineDimensions={width,depth};state.sizePreset=id;fitStageToPoints();render();}
+}
+$('presetNoCuts').onclick=()=>applySizePreset('no-cuts',288,96);
+$('presetTwoCuts').onclick=()=>applySizePreset('two-cuts',144,96);
 document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEventListener('change',render));
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
 $('boards').onclick=()=>{state.outlineDimensions=null;state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
@@ -246,7 +254,7 @@ $('scene').addEventListener('pointerdown',e=>{
   else if(state.mode==='measure'&&state.calibration){if(!inside(p,state.region)){$('error').textContent='Choose a point inside the traced ceiling region.';return;}state.segment.push(p);if(state.segment.length===2)state.mode='edit';}
   render();
 });
-$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;if(state.drag.key==='region'&&state.mode==='corners'&&state.region.length===4){const linked=state.drag.index%2===0?state.drag.index+1:state.drag.index-1;state.region[linked][1]=p[1];}state[state.drag.key][state.drag.index]=p;render();});
+$('scene').addEventListener('pointermove',e=>{if(!state.drag)return;const mayLeave=state.drag.key==='region'||state.drag.key==='reference',p=eventPoint(e,!mayLeave);if(state.drag.key==='segment'&&!inside(p,state.region))return;if(state.drag.key==='region'){state.sizePreset=null;if(state.mode==='corners'&&state.region.length===4){const linked=state.drag.index%2===0?state.drag.index+1:state.drag.index-1;state.region[linked][1]=p[1];}}state[state.drag.key][state.drag.index]=p;render();});
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('scene').addEventListener(type,()=>{if(state.drag){state.drag=null;fitStageToPoints();render();}});
 $('scene').addEventListener('keydown',e=>{const key=e.target.getAttribute('data-key'),index=Number(e.target.getAttribute('data-index')),moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!key||!moves[e.key])return;e.preventDefault();const old=state[key][index],m=moves[e.key],step=e.shiftKey?10:1,raw=[old[0]+m[0]*step,old[1]+m[1]*step],mayLeave=key==='region'||key==='reference',p=mayLeave?raw:[Math.max(0,Math.min(state.image.width,raw[0])),Math.max(0,Math.min(state.image.height,raw[1]))];if(key==='segment'&&!inside(p,state.region))return;state[key][index]=p;render();const moved=$('scene').querySelector(`[data-key="${key}"][data-index="${index}"]`);if(moved)moved.focus();});
 $('export').onclick=async()=>{

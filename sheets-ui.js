@@ -19,11 +19,11 @@ function drawDrywall(c,view='sheets',complete=true){
       return score(p)<score(state.region[best])?i:best;
     },0);
     const anchor=complete?null:c.plane[anchorIndex];
-    const layoutKey=`${complete?'closed':'open'}:${key}:${anchor?anchor.join(','):''}`;
-    if(layoutKey!==sheetCacheKey){sheetCache=complete?SheetLayout.optimize(c.plane,width,length):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
+    const layoutKey=`${complete?'closed':'open'}:${state.sizePreset||'custom'}:${key}:${anchor?anchor.join(','):''}`;
+    if(layoutKey!==sheetCacheKey){sheetCache=complete?(state.sizePreset==='two-cuts'?SheetLayout.candidate(c.plane,96,48,0,0):SheetLayout.optimize(c.plane,width,length)):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
-    summary.textContent=complete?`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
+    summary.textContent=state.sizePreset==='two-cuts'?'3 sheets total · 2 full sheets + 2 half-sheet pieces · 2 cuts':complete?`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
     const displaySheets=result.sheets.map(s=>{const center=complete?sheetLabelPoint(s.polygons):[s.x+s.w/2,s.y+s.h/2],imagePoint=G.project(c.forward,center);return {...s,center,imagePoint};}).sort((a,b)=>{
       const score=p=>Math.hypot((state.image.width-p.imagePoint[0])/state.image.width,(state.image.height-p.imagePoint[1])/state.image.height);
