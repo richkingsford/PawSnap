@@ -20,7 +20,7 @@ function drawDrywall(c,view='sheets',complete=true){
     },0);
     const anchor=complete?null:c.plane[anchorIndex];
     const layoutKey=`${complete?'closed':'open'}:${state.sizePreset||'custom'}:${key}:${anchor?anchor.join(','):''}`;
-    if(layoutKey!==sheetCacheKey){sheetCache=complete?(state.sizePreset==='two-cuts'?SheetLayout.candidate(c.plane,96,48,0,0):SheetLayout.optimize(c.plane,width,length)):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
+    if(layoutKey!==sheetCacheKey){sheetCache=complete?(state.sizePreset?SheetLayout.candidate(c.plane,96,48,0,0):SheetLayout.optimize(c.plane,width,length)):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
     summary.textContent=state.sizePreset==='two-cuts'?'3 sheets total · 2 full sheets + 2 half-sheet pieces · 2 cuts':complete?`${result.sheets.length} sheets · ${result.sheets.length-result.cutSheets} full · ${result.cutSheets} cut · ${result.trimEdges} trim edges · ${(result.waste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
