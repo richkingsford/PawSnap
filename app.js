@@ -11,7 +11,7 @@ const state={image:null,reference:[],widths:[],region:[],edgeLengths:[],segment:
 const boardMode=()=>$('scaleSource').value==='boards';
 const viewMode=()=>document.querySelector('input[name="viewMode"]:checked').value;
 const selectView=value=>{const radio=document.querySelector(`input[name="viewMode"][value="${value}"]`);if(radio)radio.checked=true;};
-const fullPerimeterVisible=()=>Boolean(state.outlineDimensions||state.sizePreset)||(state.image&&state.region.length>=3&&!state.region.some(([x,y])=>x<=1||y<=1||x>=state.image.width-1||y>=state.image.height-1));
+const fullPerimeterVisible=()=>Boolean(state.image&&state.region.length>=3);
 function conservativeCorners(points,confidentExtraCorners=false){
   const result=points.map(p=>[...p]);if(confidentExtraCorners)return result;
   while(result.length>4){let remove=0,smallest=Infinity;for(let i=0;i<result.length;i++){const a=result[(i+result.length-1)%result.length],p=result[i],b=result[(i+1)%result.length],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)||1,distance=Math.abs(dy*p[0]-dx*p[1]+b[0]*a[1]-b[1]*a[0])/length;if(distance<smallest){smallest=distance;remove=i;}}result.splice(remove,1);}return result;
@@ -40,6 +40,7 @@ function positionPointMenu(){
 }
 function validCalibration(){
   if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,state.region);
+  if(state.region.length===4&&state.edgeLengths.length===4)return G.calibrate(state.region,(state.edgeLengths[0]+state.edgeLengths[2])/2,(state.edgeLengths[1]+state.edgeLengths[3])/2,state.region);
   if(state.manualCalibration&&state.region.length>=3)return {...state.manualCalibration,plane:state.region.map(p=>G.project(state.manualCalibration.inverse,p))};
   if(state.reference.length!==4)return null;
   if(boardMode()&&state.widths.length!==4)return null;
@@ -53,6 +54,7 @@ function validCalibration(){
 }
 function pointEditCalibration(){
   if(state.outlineDimensions&&state.region.length===4)return G.calibrate(state.region,state.outlineDimensions.width,state.outlineDimensions.depth,[]);
+  if(state.region.length===4&&state.edgeLengths.length===4)return G.calibrate(state.region,(state.edgeLengths[0]+state.edgeLengths[2])/2,(state.edgeLengths[1]+state.edgeLengths[3])/2,[]);
   if(state.manualCalibration&&state.region.length>=3)return {...state.manualCalibration,plane:state.region.map(p=>G.project(state.manualCalibration.inverse,p))};
   if(state.reference.length!==4||state.widths.length!==4)throw Error('Add scale marks to calculate inch lengths.');
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}

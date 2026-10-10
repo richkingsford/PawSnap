@@ -38,7 +38,7 @@ The Calculate editor always opens and **Apply lengths** is always clickable. Bef
 
 Calibrate Ceiling includes two demonstration size presets for 4 × 8 ft sheets. **No cuts required** sets a 24 × 8 ft ceiling covered by six full sheets in two rows of three. **2 cuts required** sets a 12 × 8 ft demonstration layout with two full sheets and two half-sheet pieces cut from one additional sheet, for three purchased sheets total.
 
-Every orange cut piece carries its dimensions both on the ceiling overlay and in the cut list. The Drywall **Keep / Cut away** toggle switches all orange descriptions between the finished piece dimensions and the stock material dimensions to remove; it never changes the underlying layout.
+Every orange cut piece carries its dimensions both on the ceiling overlay and in the cut list. The Drywall **Keep / Cut away** toggle switches all orange descriptions between the finished piece dimensions and the stock material dimensions to remove; it never changes the underlying layout. Every measured ceiling is treated as complete for layout purposes, so all full and partial sheets remain visible even when the photo omits room boundaries or the ceiling is smaller than one sheet.
 
 Once dimensions or reference marks exist, calibration remains live while green outline points are adjusted. Manual length edits therefore apply immediately without a separate finishing step.
 
