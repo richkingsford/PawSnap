@@ -22,6 +22,8 @@ Clicking a green ceiling-outline point, or releasing it after a drag, opens a po
 
 After a dot is added, every outline edge retains its editable inch input. Any edge whose screen angle reaches 45° or less from horizontal snaps immediately to a perfectly horizontal line; its connected endpoint moves with it. The same rule applies during pointer dragging, keyboard movement, and typed line-length changes.
 
+Multi-point outlines obey signed closure math. Every edge always has a positive numeric estimate. Editing one horizontal or vertical edge keeps that value fixed and proportionally resizes the opposite-direction edge group; therefore split walls always add up to the wall opposite them. The same balancing is applied to the other axis so the orthogonal outline closes exactly after every single-field edit.
+
 If both edited lengths cannot geometrically meet while their neighboring dots remain fixed, live validation marks the fields invalid and shows the exact allowable interval for each value. Apply is blocked and no point moves until the pair is valid. Editing only one field remains valid: the selected point moves to satisfy it and the other displayed length recalculates.
 
 The Calculate popup always assumes 90° corners. It keeps one connected-line field editable; clicking the gray field switches the active room dimension. Apply matches the opposite side and maintains the rectangular lock.
