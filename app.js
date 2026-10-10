@@ -4,7 +4,7 @@ const samples=[
   {name:'Open joists',url:'samples/framing-room.jpg',region:[[0,.21],[1,.21],[1,.42],[.72,.49],[0,.49]]},
   {name:'Long room',url:'samples/framing-wide.jpg',region:[[0,0],[1,0],[.85,.475],[.46,.475],[0,.39]]},
   {name:'Basement ducts',url:'samples/basement-ducts.png',region:[[0,0],[1,0],[1,.57],[0,.46]]},
-  {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],confidentExtraCorners:true,starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
+  {name:'Ceiling battens',url:'samples/ceiling-battens.png',region:[[0,0],[1,0],[1,.28],[.79,.396],[0,.396]],starter:{reference:[[161,78],[251,78],[240,164],[175,164]],widths:[[165,145],[176,145],[207,160],[207,167]]}},
   {name:'Renovation',url:'samples/ceiling-renovation.png',region:[[0,0],[1,0],[1,.495],[.66,.58],[.09,.59],[0,.55]]}
 ];
 const state={image:null,reference:[],widths:[],region:[],segment:[],mode:'edit',calibration:null,outlineDimensions:null,drag:null,pointMenuIndex:null,pointLengthDirty:{previous:false,next:false},rightAngleActive:'previous',viewBox:null,version:0,starter:false};
@@ -55,12 +55,26 @@ function pointEditCalibration(){
   if(state.reference.length!==4||state.widths.length!==4)throw Error('Add scale marks to calculate inch lengths.');
   try{return G.calibrateBoards(state.reference,state.widths,2,[]);}catch(e){throw Error(`Calibration marks conflict: ${e.message}`);}
 }
+function rectangleMetrics(c){
+  const plane=state.region.map(p=>G.project(c.inverse,p)),origin=plane[0],dx=plane[1][0]-origin[0],dy=plane[1][1]-origin[1],width=Math.hypot(dx,dy),ux=dx/width,uy=dy/width,toLast=[plane[3][0]-origin[0],plane[3][1]-origin[1]],sign=(-uy*toLast[0]+ux*toLast[1])>=0?1:-1,vx=-uy*sign,vy=ux*sign,depth=Math.abs(vx*toLast[0]+vy*toLast[1]);
+  return {origin,ux,uy,vx,vy,width,depth};
+}
+function setRectangleDimensions(c,width,depth){
+  if(state.region.length!==4||![width,depth].every(v=>Number.isFinite(v)&&v>0))throw Error('Enter positive lengths for one side and one adjacent side.');
+  const m=rectangleMetrics(c),plane=[[0,0],[width,0],[width,depth],[0,depth]].map(([x,y])=>[m.origin[0]+m.ux*x+m.vx*y,m.origin[1]+m.uy*x+m.vy*y]);
+  state.region=plane.map(p=>G.project(c.forward,p));state.outlineDimensions={width,depth};fitStageToPoints();render();
+}
+function renderCornerLineInputs(c){
+  if(state.mode!=='corners'||viewMode()==='photo'||state.region.length!==4)return;const values=c?state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%4]))):['','','',''];
+  state.region.forEach((p,i)=>{const q=state.region[(i+1)%4],mid=[(p[0]+q[0])/2,(p[1]+q[1])/2],box=svg('foreignObject',{x:mid[0]-47,y:mid[1]-38,width:94,height:30,'data-line-input':i}),input=document.createElementNS('http://www.w3.org/1999/xhtml','input');input.type='number';input.min='.1';input.step='any';input.placeholder=`Line ${i+1}`;input.value=values[i]===''?'':values[i].toFixed(1);input.style.cssText='width:90px;height:27px;margin:0;padding:4px 6px;border:2px solid #c7f36a;border-radius:4px;background:white;color:#20231f;font:600 12px Manrope';input.addEventListener('pointerdown',e=>e.stopPropagation());input.addEventListener('change',()=>{const value=Number(input.value);if(!(value>0))return;if(!c){const partner=$('scene').querySelector(`foreignObject[data-line-input="${(i+2)%4}"] input`);if(partner)partner.value=value.toFixed(1);const fields=[...$('scene').querySelectorAll('foreignObject[data-line-input] input')].map(field=>Number(field.value));if(fields.every(v=>v>0)){state.outlineDimensions={width:(fields[0]+fields[2])/2,depth:(fields[1]+fields[3])/2};render();}return;}const m=rectangleMetrics(c);setRectangleDimensions(c,i%2===0?value:m.width,i%2===1?value:m.depth);});box.append(input);});
+}
 function validatePointLengths(){
   const previousInput=$('previousEdgeLength'),nextInput=$('nextEdgeLength'),dirty=state.pointLengthDirty;
   previousInput.setCustomValidity('');nextInput.setCustomValidity('');previousInput.removeAttribute('aria-invalid');nextInput.removeAttribute('aria-invalid');
   const previousLength=Number(previousInput.value),nextLength=Number(nextInput.value);
   if($('rightAngleOnly').checked){
     try{
+      if(state.region.length===4){const active=state.rightAngleActive==='previous'?previousInput:nextInput,length=Number(active.value);if(!Number.isFinite(length)||length<=0){const message='Enter a line length greater than 0 inches.';active.setCustomValidity(message);active.setAttribute('aria-invalid','true');$('pointEditorStatus').textContent=message;return false;}$('pointEditorStatus').textContent='The opposite side will match; all corners remain 90°.';return true;}
       const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length,previous=(i+n-1)%n,next=(i+1)%n;
       const p=G.project(c.inverse,state.region[previous]),q=G.project(c.inverse,state.region[next]),base=G.distance(p,q),active=state.rightAngleActive==='previous'?previousInput:nextInput,other=state.rightAngleActive==='previous'?nextInput:previousInput,length=Number(active.value),maximum=Math.max(.1,base-.1);
       active.min='.1';active.max=maximum.toFixed(1);
@@ -131,7 +145,7 @@ function render(){
     }
   }catch(e){$('error').textContent=e.message;state.calibration=null;}
   drawDrywall(viewMode()==='sheets'?state.calibration:null,viewMode(),fullPerimeterVisible());
-  const showGuides=viewMode()==='grid'||state.mode!=='edit'||!state.calibration;
+  const showGuides=viewMode()==='grid'||['reference','boards','measure'].includes(state.mode)||!state.calibration;
   if(state.region.length>=3&&viewMode()!=='photo')svg('polygon',{points:pointString(state.region),fill:'#c7f36a08',stroke:'#c7f36a','stroke-width':1.5,'vector-effect':'non-scaling-stroke'});
   if(state.calibration&&viewMode()!=='photo'&&showGuides)state.region.forEach((p,i)=>{const q=state.region[(i+1)%state.region.length],a=G.project(state.calibration.inverse,p),b=G.project(state.calibration.inverse,q),mid=[(p[0]+q[0])/2,(p[1]+q[1])/2],tag=label(mid,`${G.distance(a,b).toFixed(1)}″`,'#c7f36a');tag.setAttribute('text-anchor','middle');tag.setAttribute('data-edge-length',String(i));});
   if(state.reference.length>1&&viewMode()!=='photo'&&showGuides)svg('polyline',{points:pointString(state.reference.length===4?[...state.reference,state.reference[0]]:state.reference),fill:'none',stroke:'#ffce66','stroke-width':2,'vector-effect':'non-scaling-stroke'});
@@ -142,12 +156,13 @@ function render(){
     const name=key==='reference'?'ABCD'[i]:key==='region'?String(i+1):key==='widths'?['W1a','W1b','W2a','W2b'][i]:['P','Q'][i];
     svg('circle',{cx:p[0],cy:p[1],r:key==='widths'?Math.max(3,state.image.width/140):Math.max(6,state.image.width/70),fill:color,stroke:'#202820','stroke-width':2,class:'point','data-key':key,'data-index':i,tabindex:0,role:'button','aria-label':`${key} point ${name}. Arrow keys move; Shift moves ten pixels.`});if(key!=='widths')label(p,name,color);
   });
-  $('referenceInfo').textContent=state.reference.length===4?'4/4 corners · drag to adjust':`${state.reference.length}/4 corners`;
+  renderCornerLineInputs(state.calibration);
+  $('referenceInfo').textContent='4 ceiling corners · drag or enter lengths';
   $('boardControls').hidden=!boardMode();$('boards').hidden=!boardMode();$('rectangleControls').hidden=boardMode();
-  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
+  const messages={edit:state.calibration?'Ready — adjust handles if needed.':'Calibrate the ceiling to place sheets.',corners:'Drag green corners or edit a line length. Opposite sides stay equal.',boards:state.widths.length===4?'Purple width dots are ready — drag them, then choose Adjust.':`Board ${state.widths.length<2?'1':'2'}: mark the ${state.widths.length%2?'other':'first'} edge.${state.widths.length>=2?' Use a different direction.':''}`,reference:state.reference.length===4?'Drag any corner, including beyond the photo. Choose Adjust when finished.':`Mark corner ${'ABCD'[state.reference.length]||'A'} · follow the rectangle perimeter.`,boundary:`${state.region.length} outline points · continue, then Finish.`,measure:`Mark ${state.segment.length?'the second':'the first'} point.`};
   $('instruction').textContent=messages[state.mode];$('modeLabel').textContent=state.mode.toUpperCase();
   $('measure').disabled=!state.calibration;
-  ['reference','measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));
+  ['measure','edit','boards'].forEach(id=>$(id).classList.toggle('active',state.mode===id));$('reference').classList.toggle('active',state.mode==='corners');
   requestAnimationFrame(positionPointMenu);
 }
 async function loadPhoto(url,name,region=[],starter=null,confidentExtraCorners=false){
@@ -160,7 +175,7 @@ $('sheetSize').addEventListener('change',render);
 document.querySelectorAll('input[name="viewMode"]').forEach(radio=>radio.addEventListener('change',render));
 $('scaleSource').onchange=()=>{state.mode='edit';state.segment=[];render();};
 $('boards').onclick=()=>{state.outlineDimensions=null;state.segment=[];state.mode='boards';state.pointMenuIndex=null;render();};
-$('reference').onclick=()=>{state.outlineDimensions=null;state.reference=[];state.segment=[];state.mode='reference';$('confirmed').checked=false;render();};
+$('reference').onclick=()=>{state.segment=[];state.mode='corners';try{const c=pointEditCalibration(),lengths=state.region.map((p,i)=>G.distance(G.project(c.inverse,p),G.project(c.inverse,state.region[(i+1)%4])));setRectangleDimensions(c,(lengths[0]+lengths[2])/2,(lengths[1]+lengths[3])/2);}catch(e){render();}};
 $('measure').onclick=()=>{state.segment=[];state.mode='measure';render();};$('edit').onclick=()=>{state.mode='edit';render();};
 $('calculatePoint').onclick=()=>{
   const i=state.pointMenuIndex,n=state.region.length;if(i===null)return;let c=null,calibrationError='';try{c=pointEditCalibration();}catch(e){calibrationError=e.message;}
@@ -183,6 +198,7 @@ $('applyPointLengths').onclick=()=>{
     const i=state.pointMenuIndex,c=pointEditCalibration(),n=state.region.length;if(i===null)throw Error('Select a ceiling point first.');
     const previous=(i+n-1)%n,next=(i+1)%n,dirty=state.pointLengthDirty;let previousLength=Number($('previousEdgeLength').value),nextLength=Number($('nextEdgeLength').value);
     if(!validatePointLengths()){($('previousEdgeLength').validationMessage?$('previousEdgeLength'):$('nextEdgeLength')).reportValidity();return;}
+    if($('rightAngleOnly').checked&&n===4){const m=rectangleMetrics(c),edge=state.rightAngleActive==='previous'?previous:i,length=state.rightAngleActive==='previous'?previousLength:nextLength;setRectangleDimensions(c,edge%2===0?length:m.width,edge%2===1?length:m.depth);const fresh=pointEditCalibration(),anchor=G.project(fresh.inverse,state.region[i]);$('previousEdgeLength').value=G.distance(anchor,G.project(fresh.inverse,state.region[previous])).toFixed(1);$('nextEdgeLength').value=G.distance(anchor,G.project(fresh.inverse,state.region[next])).toFixed(1);state.pointLengthDirty={previous:false,next:false};$('pointEditorStatus').textContent='Edited side and its opposite now match; all corners remain 90°.';return;}
     if($('rightAngleOnly').checked){const p=G.project(c.inverse,state.region[previous]),q=G.project(c.inverse,state.region[next]),base=G.distance(p,q);if(state.rightAngleActive==='previous')nextLength=Math.sqrt(base**2-previousLength**2);else previousLength=Math.sqrt(base**2-nextLength**2);state.region[i]=G.solvePointFromLengths(c.inverse,c.forward,state.region[i],state.region[previous],state.region[next],previousLength,nextLength);}
     else if(dirty.previous&&!dirty.next)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[previous],state.region[i],previousLength);
     else if(dirty.next&&!dirty.previous)state.region[i]=G.extendPoint(c.inverse,c.forward,state.region[next],state.region[i],nextLength);
@@ -199,14 +215,14 @@ $('addPoint').onclick=()=>{
 };
 function openAllPointsEditor(message='Each field is one ceiling-outline line in inches.'){
   const list=$('allPointsList');list.replaceChildren();let c=null;try{c=pointEditCalibration();}catch(e){}
-  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.placeholder='Enter inches';if(c){const a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]);input.value=G.distance(a,b).toFixed(1);}input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');const value=Number(input.value);if(state.region.length===4&&value>0){const opposite=list.querySelector(`input[data-index="${(i+2)%4}"]`);if(opposite){opposite.value=value.toFixed(1);opposite.dataset.calculated='true';}}if(!c){const complete=[...list.querySelectorAll('input')].every(field=>Number(field.value)>0);$('allPointsStatus').textContent=complete?'All four lines are set. Apply dimensions.':value>0?`Opposite line ${(i+2)%4+1} calculated. Enter one adjacent line to complete the ceiling.`:'Enter a positive length in inches.';return;}const following=(i+2)%state.region.length,a=G.project(c.inverse,state.region[i]),b=G.project(c.inverse,state.region[following]),base=G.distance(a,b),partner=list.querySelector(`input[data-index="${next}"]`);if(value>0&&value<base&&partner){partner.value=Math.sqrt(base**2-value**2).toFixed(1);partner.dataset.calculated='true';$('allPointsStatus').textContent=`Line ${next+1} calculated automatically for a 90° corner.`;}else $('allPointsStatus').textContent=`Line ${i+1} must be between 0″ and ${base.toFixed(1)}″.`;});label.append(input);row.append(label);list.append(row);});
+  state.region.forEach((point,i)=>{const next=(i+1)%state.region.length,row=document.createElement('div'),label=document.createElement('label'),input=document.createElement('input');row.className='all-point-row';label.textContent=`Line ${i+1}: Point ${i+1} → ${next+1} (in)`;input.type='number';input.min='.1';input.step='any';input.placeholder='Enter inches';if(c){const a=G.project(c.inverse,point),b=G.project(c.inverse,state.region[next]);input.value=G.distance(a,b).toFixed(1);}input.dataset.index=String(i);input.addEventListener('input',()=>{input.dataset.dirty='true';input.setCustomValidity('');input.removeAttribute('aria-invalid');const value=Number(input.value);if(state.region.length===4&&value>0){const opposite=list.querySelector(`input[data-index="${(i+2)%4}"]`);if(opposite){opposite.value=value.toFixed(1);opposite.dataset.calculated='true';}}const complete=[...list.querySelectorAll('input')].every(field=>Number(field.value)>0);$('allPointsStatus').textContent=complete?`Opposite line ${(i+2)%4+1} matched. Apply to reshape the green rectangle.`:value>0?`Opposite line ${(i+2)%4+1} matched. Enter one adjacent line.`:'Enter a positive length in inches.';});label.append(input);row.append(label);list.append(row);});
   $('allPointsStatus').textContent=c?message:state.region.length===4?'Enter one line and one adjacent line; opposite sides calculate automatically.':'Enter known lengths after adding scale marks.';$('pointActions').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=false;requestAnimationFrame(positionPointMenu);
 }
 $('changeAllPoints').onclick=openAllPointsEditor;
 $('cancelAllPoints').onclick=()=>{$('allPointsEditor').hidden=true;$('pointActions').hidden=false;requestAnimationFrame(positionPointMenu);};
 $('applyAllPoints').onclick=()=>{
   try{
-    let c;try{c=pointEditCalibration();}catch(e){if(state.region.length!==4){$('allPointsStatus').textContent='Add scale marks before applying this outline.';return;}const values=[...$('allPointsList').querySelectorAll('input')].map(input=>Number(input.value));if(values.some(value=>!Number.isFinite(value)||value<=0)){$('allPointsStatus').textContent='Enter one line and one adjacent line; opposite sides calculate automatically.';return;}state.outlineDimensions={width:(values[0]+values[2])/2,depth:(values[1]+values[3])/2};c=pointEditCalibration();render();openAllPointsEditor('Dimensions applied. Opposite sides match and every corner is 90°.');return;}const next=state.region.map(p=>[...p]),changed=new Set();
+    let c=null;try{c=pointEditCalibration();}catch(e){}const values=[...$('allPointsList').querySelectorAll('input')].map(input=>Number(input.value));if(state.region.length===4){if(values.some(value=>!Number.isFinite(value)||value<=0)){$('allPointsStatus').textContent='Enter one line and one adjacent line; opposite sides calculate automatically.';return;}const width=(values[0]+values[2])/2,depth=(values[1]+values[3])/2;if(c)setRectangleDimensions(c,width,depth);else{state.outlineDimensions={width,depth};c=pointEditCalibration();render();}openAllPointsEditor('Dimensions applied. Opposite sides match and every corner is 90°.');return;}if(!c){$('allPointsStatus').textContent='Add scale marks before applying this outline.';return;}const next=state.region.map(p=>[...p]),changed=new Set();
     for(const input of $('allPointsList').querySelectorAll('input[data-dirty="true"]')){const value=Number(input.value),i=Number(input.dataset.index),target=(i+1)%next.length,following=(i+2)%next.length,anchorPlane=G.project(c.inverse,next[i]),followingPlane=G.project(c.inverse,next[following]),base=G.distance(anchorPlane,followingPlane);if(input.value.trim()===''||!Number.isFinite(value)||value<=0||value>=base){const message=`Line ${i+1} must be greater than 0″ and less than ${base.toFixed(1)}″ to keep the next corner at 90°.`;input.setCustomValidity(message);input.setAttribute('aria-invalid','true');input.reportValidity();throw Error(message);}const other=Math.sqrt(base**2-value**2);next[target]=G.solvePointFromLengths(c.inverse,c.forward,next[target],next[i],next[following],value,other);changed.add(target);}
     if(!changed.size){$('allPointsStatus').textContent='Change at least one line first.';return;}if(!G.simple(next))throw Error('Those lengths make the ceiling outline cross itself. Change one or more lines.');
     state.region=next;fitStageToPoints();render();openAllPointsEditor(`Moved ${changed.size} ending point${changed.size===1?'':'s'}; all other points stayed fixed.`);
@@ -216,7 +232,7 @@ $('removePoint').onclick=()=>{const i=state.pointMenuIndex;if(i===null)return;if
 function eventPoint(e,clamp=true){const p=new DOMPoint(e.clientX,e.clientY).matrixTransform($('scene').getScreenCTM().inverse());return clamp?[Math.max(0,Math.min(state.image.width,p.x)),Math.max(0,Math.min(state.image.height,p.y))]:[p.x,p.y];}
 $('scene').addEventListener('pointerdown',e=>{
   if(!state.image)return;const p=eventPoint(e),key=e.target.getAttribute('data-key');
-  if(key&&['edit','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=true;$('pointActions').hidden=false;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
+  if(key&&['edit','corners','reference','boundary','boards'].includes(state.mode)){const index=Number(e.target.getAttribute('data-index'));state.pointMenuIndex=key==='region'?index:null;$('pointMenu').hidden=true;$('pointEditor').hidden=true;$('allPointsEditor').hidden=true;$('pointActions').hidden=false;state.drag={key,index};$('scene').setPointerCapture(e.pointerId);return;}
   state.pointMenuIndex=null;$('pointMenu').hidden=true;
   if(state.mode==='reference'&&state.reference.length<4)state.reference.push(p);
   else if(state.mode==='boundary')state.region.push(p);

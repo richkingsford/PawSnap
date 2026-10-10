@@ -18,21 +18,21 @@ Run this checklist after every interaction or geometry change.
 - [ ] With incomplete calibration markers, confirm the popup reports exact completion counts instead of a generic “finish calibration” message.
 - [ ] Change both connected-line lengths and confirm the selected point moves to the nearest valid intersection while every other point remains fixed.
 - [ ] Enter an impossible pair of lengths and confirm Apply is blocked with exact allowable ranges for both fields; no point may move.
-- [ ] Enter the exact conflicting pair 111″ then 222″ on point 2. Confirm the popup explains why they cannot meet and displays each field's valid range.
 
 ## Calibration controls
 
-- [ ] **Mark corners** leaves all four reference handles visible and draggable, including outside the photo.
+- [ ] **Mark corners** leaves all four green ceiling handles visible and draggable, including outside the photo.
 - [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
 - [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
-- [ ] Open every sample and confirm suggested outlines normally contain four green corners. More than four may appear only on a sample explicitly marked as a confident extra-corner case.
+- [ ] Open every sample and confirm exactly four green corners; there are no automatic extra-corner exceptions.
+- [ ] Enter Mark corners and confirm one editable inch input appears above each of the four green edges. Change each orientation in turn and confirm the opposite edge matches, both opposite edges remain parallel, and all four corners remain 90°.
 - [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.
 - [ ] Confirm cut sheets use a solid amber fill with no yellow interior stripes.
 - [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
 - [ ] Open **Change all points** with and without completed scale marks. Confirm there is exactly one inch-length input for every outline line and no missing-corners message replaces the fields.
-- [ ] On a calibrated photo, change one line and confirm its connected line recalculates immediately. Apply and confirm only the shared ending point moves and the corner remains 90°.
+- [ ] On a calibrated photo, change one line and Apply. Confirm its opposite line matches, opposite lines stay parallel, and every corner remains 90°.
 - [ ] On an uncalibrated four-corner photo, enter Line 1 and confirm Line 3 matches automatically; enter Line 2 and confirm Line 4 matches. Apply without scale marks and confirm area, grid, and sheets become calibrated from those dimensions.
-- [ ] After applying dimensions in Sheets view, confirm the green boundary and every green corner remain visible and clickable. Reopen the two-box Calculate editor, change its editable line, and confirm the other line recalculates and only the selected point moves.
+- [ ] After applying dimensions in Sheets view, confirm the green boundary and every green corner remain visible and clickable. Reopen the two-box Calculate editor, change its editable line, and confirm the opposite side matches while the rectangle remains locked.
 - [ ] Clear a changed all-lines value or enter an impossible 90° length and confirm specific validation appears and no point moves.
 - [ ] Confirm the popup shows the brief **90° corners assumed** note, with no checkbox. Exactly one connected-line field is editable and the other is visibly grayed.
 - [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
