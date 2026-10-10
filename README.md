@@ -28,6 +28,8 @@ The green ceiling boundary and its corner handles remain visible and clickable i
 
 Mark corners always uses a four-point rectangular ceiling. It displays an editable inch input above every green edge. Committing a value with Enter or blur changes that dimension, gives the opposite edge the same length, and preserves parallel opposite sides and four 90° corners in the calibrated ceiling plane.
 
+The two endpoints of each horizontal green edge are vertically linked in Mark corners. Dragging either endpoint up or down moves its partner to the identical image Y position, keeping the edge perfectly horizontal. Typed dimension changes reapply the same horizontal lock.
+
 The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
 
 Once dimensions or reference marks exist, calibration remains live while green outline points are adjusted. Manual length edits therefore apply immediately without a separate finishing step.
