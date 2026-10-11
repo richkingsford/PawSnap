@@ -21,20 +21,20 @@ function cutPlanDiagram(bin,stockWidth,stockLength,diagramIndex){
   const wrap=document.createElement('div');wrap.className='cut-diagram';
   const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${long} ${short}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Cut diagram for ${bin.pieces.map(piece=>`S${piece.id}`).join(' and ')}`);
   const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;};
-  const defs=add('defs',{}),pattern=add('pattern',{id:`waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff3de'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#e49a30','stroke-width':2},pattern);
-  add('rect',{x:0,y:0,width:long,height:short,fill:'#f6f2e9',stroke:'#4a5147','stroke-width':.8});
+  const defs=add('defs',{}),pattern=add('pattern',{id:`waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff0ec'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#d55b3e','stroke-width':2},pattern);
+  add('rect',{x:0,y:0,width:long,height:short,fill:'#f6f2e9',stroke:'#29362b','stroke-width':1.2});
   let cursor=0,needsKey=false;
   bin.pieces.forEach((piece,index)=>{
     const span=bin.spans[index],x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?span:long,h=bin.mode==='width'?span:short;
-    const color=index%2?'#f6a83b':'#ffc463';add('rect',{x,y,width:w,height:h,fill:color,stroke:'#70430b','stroke-width':.55});
-    if(w>=18&&h>=10){add('text',{x:x+w/2,y:y+h/2-.8,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-id'},drawing,`S${piece.id}`);add('text',{x:x+w/2,y:y+h/2+4.2,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-size'},drawing,`${fmt(piece.width)} × ${fmt(piece.height)}`);}else needsKey=true;
-    cursor+=span;if(cursor<(bin.mode==='length'?long:short)-1e-6)add('line',bin.mode==='length'?{x1:cursor,y1:0,x2:cursor,y2:short,class:'cut-line'}:{x1:0,y1:cursor,x2:long,y2:cursor,class:'cut-line'});
+    add('rect',{x,y,width:w,height:h,fill:'#cfe9a8',stroke:'#55752f','stroke-width':.55});
+    if(w>=18&&h>=10){add('text',{x:x+w/2,y:y+h/2-.8,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-id'},drawing,`KEEP S${piece.id}`);add('text',{x:x+w/2,y:y+h/2+4.2,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-size'},drawing,`${fmt(piece.width)} × ${fmt(piece.height)}`);}else needsKey=true;
+    cursor+=span;if(cursor<(bin.mode==='length'?long:short)-1e-6){add('line',bin.mode==='length'?{x1:cursor,y1:0,x2:cursor,y2:short,class:'cut-line'}:{x1:0,y1:cursor,x2:long,y2:cursor,class:'cut-line'});add('text',bin.mode==='length'?{x:cursor+1.2,y:4,class:'cut-marker'}:{x:2,y:cursor-1.2,class:'cut-marker'},drawing,'CUT');}
   });
   const capacity=bin.mode==='length'?long:short,remainder=Math.max(0,capacity-cursor);
-  if(remainder>1e-6){const x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?remainder:long,h=bin.mode==='width'?remainder:short;add('rect',{x,y,width:w,height:h,fill:`url(#waste-${diagramIndex})`,stroke:'#b86f08','stroke-width':.55});add('text',{x:x+w/2,y:y+h/2-1.5,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-label'},drawing,'CUT AWAY');add('text',{x:x+w/2,y:y+h/2+3.4,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-size'},drawing,bin.mode==='length'?`${fmt(short)} × ${fmt(remainder)}`:`${fmt(long)} × ${fmt(remainder)}`);}
+  if(remainder>1e-6){const x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?remainder:long,h=bin.mode==='width'?remainder:short;add('rect',{x,y,width:w,height:h,fill:`url(#waste-${diagramIndex})`,stroke:'#a23c29','stroke-width':.7});add('text',{x:x+w/2,y:y+h/2-1.5,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-label'},drawing,'CUT OFF');add('text',{x:x+w/2,y:y+h/2+3.4,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-size'},drawing,bin.mode==='length'?`${fmt(short)} × ${fmt(remainder)}`:`${fmt(long)} × ${fmt(remainder)}`);}
   wrap.append(drawing);
-  if(needsKey){const key=document.createElement('div');key.className='diagram-piece-key';bin.pieces.forEach((piece,index)=>{const item=document.createElement('span'),swatch=document.createElement('i');swatch.style.background=index%2?'#f6a83b':'#ffc463';item.append(swatch,document.createTextNode(`S${piece.id} · ${fmt(piece.width)} × ${fmt(piece.height)}`));key.append(item);});wrap.append(key);}
-  const legend=document.createElement('p');legend.textContent='Orange: keep · Striped: cut away';wrap.append(legend);return wrap;
+  if(needsKey){const key=document.createElement('div');key.className='diagram-piece-key';bin.pieces.forEach(piece=>{const item=document.createElement('span'),swatch=document.createElement('i');item.append(swatch,document.createTextNode(`KEEP S${piece.id} · ${fmt(piece.width)} × ${fmt(piece.height)}`));key.append(item);});wrap.append(key);}
+  const note=document.createElement('p');note.className=remainder>1e-6?'has-waste':'no-waste';note.textContent=remainder>1e-6?'Green = keep · Red stripes = cut off':'KEEP THE ENTIRE SHEET · NOTHING DISCARDED';wrap.append(note);return wrap;
 }
 function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumber){
   const n=value=>Number(value.toFixed(1)),same=(a,b)=>Math.abs(a-b)<1e-6;
@@ -59,7 +59,7 @@ function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumb
   bins.forEach((bin,index)=>{
     const card=document.createElement('article');card.className='cut-card';
     const head=document.createElement('div');head.className='cut-card-head';
-    const title=document.createElement('strong');title.textContent=`Stock sheet ${firstStockNumber+index}`;head.append(title);card.append(head);
+    const title=document.createElement('strong');title.textContent=`Stock sheet ${firstStockNumber+index} · ${short/12} × ${long/12} ft`;head.append(title);card.append(head);
     if(bin.mode!=='custom'){
       card.append(cutPlanDiagram(bin,stockWidth,stockLength,index));
       const capacity=bin.mode==='length'?long:short,positions=[];let position=0;
