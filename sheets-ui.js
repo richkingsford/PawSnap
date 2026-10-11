@@ -16,6 +16,26 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
+function cutPlanDiagram(bin,stockWidth,stockLength,diagramIndex){
+  const ns='http://www.w3.org/2000/svg',short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),fmt=value=>`${Number(value.toFixed(2))}″`;
+  const wrap=document.createElement('div');wrap.className='cut-diagram';
+  const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${long} ${short}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Cut diagram for ${bin.pieces.map(piece=>`S${piece.id}`).join(' and ')}`);
+  const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;};
+  const defs=add('defs',{}),pattern=add('pattern',{id:`waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff3de'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#e49a30','stroke-width':2},pattern);
+  add('rect',{x:0,y:0,width:long,height:short,fill:'#f6f2e9',stroke:'#4a5147','stroke-width':.8});
+  let cursor=0,needsKey=false;
+  bin.pieces.forEach((piece,index)=>{
+    const span=bin.spans[index],x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?span:long,h=bin.mode==='width'?span:short;
+    const color=index%2?'#f6a83b':'#ffc463';add('rect',{x,y,width:w,height:h,fill:color,stroke:'#70430b','stroke-width':.55});
+    if(w>=18&&h>=10){add('text',{x:x+w/2,y:y+h/2-.8,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-id'},drawing,`S${piece.id}`);add('text',{x:x+w/2,y:y+h/2+4.2,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-size'},drawing,`${fmt(piece.width)} × ${fmt(piece.height)}`);}else needsKey=true;
+    cursor+=span;if(cursor<(bin.mode==='length'?long:short)-1e-6)add('line',bin.mode==='length'?{x1:cursor,y1:0,x2:cursor,y2:short,class:'cut-line'}:{x1:0,y1:cursor,x2:long,y2:cursor,class:'cut-line'});
+  });
+  const capacity=bin.mode==='length'?long:short,remainder=Math.max(0,capacity-cursor);
+  if(remainder>1e-6){const x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?remainder:long,h=bin.mode==='width'?remainder:short;add('rect',{x,y,width:w,height:h,fill:`url(#waste-${diagramIndex})`,stroke:'#b86f08','stroke-width':.55});add('text',{x:x+w/2,y:y+h/2-1.5,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-label'},drawing,'CUT AWAY');add('text',{x:x+w/2,y:y+h/2+3.4,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-size'},drawing,bin.mode==='length'?`${fmt(short)} × ${fmt(remainder)}`:`${fmt(long)} × ${fmt(remainder)}`);}
+  wrap.append(drawing);
+  if(needsKey){const key=document.createElement('div');key.className='diagram-piece-key';bin.pieces.forEach((piece,index)=>{const item=document.createElement('span'),swatch=document.createElement('i');swatch.style.background=index%2?'#f6a83b':'#ffc463';item.append(swatch,document.createTextNode(`S${piece.id} · ${fmt(piece.width)} × ${fmt(piece.height)}`));key.append(item);});wrap.append(key);}
+  const legend=document.createElement('p');legend.textContent='Orange: keep · Striped: cut away';wrap.append(legend);return wrap;
+}
 function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumber){
   const n=value=>Number(value.toFixed(1)),same=(a,b)=>Math.abs(a-b)<1e-6;
   const short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),bins=[],custom=[];
@@ -40,24 +60,17 @@ function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumb
     const card=document.createElement('article');card.className='cut-card';
     const head=document.createElement('div');head.className='cut-card-head';
     const title=document.createElement('strong');title.textContent=`Stock sheet ${firstStockNumber+index}`;head.append(title);card.append(head);
-    const ids=bin.pieces.map(piece=>`S${piece.id}`).join(' + '),groups=new Map();
-    bin.pieces.forEach(piece=>{const key=`${n(piece.width)}″ × ${n(piece.height)}″`;groups.set(key,(groups.get(key)||0)+1);});
-    const kept=[...groups].map(([size,count])=>count>1?`${count} pieces · ${size} each`:size).join('; ');
-    const keep=document.createElement('div');keep.className='cut-measure keep';
-    const keepName=document.createElement('b');keepName.textContent='KEEP';const keepValue=document.createElement('span');keepValue.textContent=`${ids} · ${kept}`;keep.append(keepName,keepValue);card.append(keep);
-    const away=document.createElement('div');away.className='cut-measure away';
-    const awayName=document.createElement('b');awayName.textContent='CUT AWAY';const awayValue=document.createElement('span');
-    if(bin.mode==='length')awayValue.textContent=same(bin.used,long)?'None — keep both sides of the cut':`${n(short)}″ × ${n(long-bin.used)}″ remaining`;
-    else if(bin.mode==='width')awayValue.textContent=same(bin.used,short)?'None — keep both sides of the cut':`${n(short-bin.used)}″ × ${n(long)}″ remaining`;
-    else awayValue.textContent=cutDescription(bin.pieces[0],'away').replace(/^Cut away /,'');
-    away.append(awayName,awayValue);card.append(away);
     if(bin.mode!=='custom'){
+      card.append(cutPlanDiagram(bin,stockWidth,stockLength,index));
       const capacity=bin.mode==='length'?long:short,positions=[];let position=0;
       bin.spans.forEach(span=>{position+=span;if(position<capacity-1e-6||!same(bin.used,capacity))positions.push(n(position));});
       const cut=document.createElement('div');cut.className='cut-measure cut-at';const cutName=document.createElement('b');cutName.textContent='CUT';const cutValue=document.createElement('span');
       const places=positions.map(value=>`${value}″`).join(positions.length>1?', ':''),verb=bin.mode==='length'?'Crosscut':'Rip';
       cutValue.textContent=`${verb} at ${places} from one ${bin.mode==='length'?'end':'edge'}${same(bin.used,capacity)?'; use all pieces':''}`;
       cut.append(cutName,cutValue);card.append(cut);
+    }else{
+      const keep=document.createElement('div');keep.className='cut-measure keep';const keepName=document.createElement('b');keepName.textContent='KEEP';const keepValue=document.createElement('span');keepValue.textContent=`S${bin.pieces[0].id} · ${cutDescription(bin.pieces[0],'keep').replace(/^Keep /,'')}`;keep.append(keepName,keepValue);
+      const away=document.createElement('div');away.className='cut-measure away';const awayName=document.createElement('b');awayName.textContent='CUT AWAY';const awayValue=document.createElement('span');awayValue.textContent=cutDescription(bin.pieces[0],'away').replace(/^Cut away /,'');away.append(awayName,awayValue);card.append(keep,away);
     }
     list.append(card);
   });
