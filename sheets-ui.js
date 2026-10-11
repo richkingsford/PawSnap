@@ -1,6 +1,5 @@
 let sheetCacheKey='',sheetCache=null;
-function cutMeasurementMode(){return document.querySelector('input[name="cutMeasure"]:checked')?.value||'keep';}
-function cutDescription(s,mode=cutMeasurementMode(),compact=false){
+function cutDescription(s,mode='keep',compact=false){
   const n=value=>Number(value.toFixed(1)),keep=`${n(s.width)}×${n(s.height)}″`;
   if(mode==='keep')return compact?`KEEP ${keep}`:`Keep ${n(s.width)}″ × ${n(s.height)}″`;
   const dx=Math.max(0,s.w-s.width),dy=Math.max(0,s.h-s.height);
@@ -18,7 +17,7 @@ function sheetLabelPoint(polygons){
   }return best?best.p:rings[0][0];
 }
 function drawDrywall(c,view='sheets',complete=true){
-  const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('sheetCuts');
+  const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('cutInstructions');
   summary.textContent=view!=='sheets'?'Switch to Virtual sheets to see the optimized layout.':selected==='none'?'No drywall sheet selected. Choose a sheet size to create a layout.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
   if(view!=='sheets'||selected==='none'||!c)return;
   const [width,length]=selected.split('x').map(Number),key=JSON.stringify([c.plane,width,length]);
@@ -44,14 +43,19 @@ function drawDrywall(c,view='sheets',complete=true){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':`CUT`} S${s.id}${needsCut?` · ${cutDescription(s,cutMeasurementMode(),true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
+      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':`CUT`} S${s.id}${needsCut?` · ${cutDescription(s,'keep',true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
       sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
-      if(!complete)continue;
-      const row=document.createElement('div');row.className='sheet-cut-row';const desc=document.createElement('span');
-      desc.textContent=`S${s.id} · ${s.full?'Full sheet — no cuts':cutDescription(s)} ${s.polygons.length>1?`· ${s.polygons.length} separate pieces`:''}`;
+      if(!complete||!needsCut)continue;
+      const card=document.createElement('article');card.className='cut-card';
+      const head=document.createElement('div');head.className='cut-card-head';
+      const title=document.createElement('strong');title.textContent=`Cut S${s.id}${s.polygons.length>1?` · ${s.polygons.length} pieces`:''}`;
       const button=document.createElement('button');button.textContent='Cut outline';button.setAttribute('aria-label',`Download cut outline for sheet S${s.id}`);button.onclick=()=>downloadSheetOutline(s);
-      row.append(desc,button);list.append(row);
+      head.append(title,button);
+      const measure=(kind,text)=>{const row=document.createElement('div');row.className=`cut-measure ${kind}`;const name=document.createElement('b');name.textContent=kind==='keep'?'KEEP':'CUT AWAY';const value=document.createElement('span');value.textContent=text;row.append(name,value);return row;};
+      card.append(head,measure('keep',cutDescription(s,'keep').replace(/^Keep /,'')),measure('away',cutDescription(s,'away').replace(/^Cut away /,'')));
+      list.append(card);
     }
+    if(!list.children.length){const note=document.createElement('p');note.className='no-cuts-note';note.textContent='No cuts required.';list.append(note);}
   }catch(e){summary.textContent=`Sheet layout unavailable: ${e.message}`;}
 }
 function downloadSheetOutline(s){
