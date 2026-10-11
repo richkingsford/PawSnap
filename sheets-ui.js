@@ -16,28 +16,8 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
-function cutPlanDiagram(bin,stockWidth,stockLength,diagramIndex){
-  const ns='http://www.w3.org/2000/svg',short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),fmt=value=>`${Number(value.toFixed(2))}″`;
-  const wrap=document.createElement('div');wrap.className='cut-diagram';
-  const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${long} ${short}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Cut diagram for ${bin.pieces.map(piece=>`S${piece.id}`).join(' and ')}`);
-  const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;};
-  const defs=add('defs',{}),pattern=add('pattern',{id:`waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff0ec'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#d55b3e','stroke-width':2},pattern);
-  add('rect',{x:0,y:0,width:long,height:short,fill:'#f6f2e9',stroke:'#29362b','stroke-width':1.2});
-  let cursor=0,needsKey=false;
-  bin.pieces.forEach((piece,index)=>{
-    const span=bin.spans[index],x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?span:long,h=bin.mode==='width'?span:short;
-    add('rect',{x,y,width:w,height:h,fill:'#cfe9a8',stroke:'#55752f','stroke-width':.55});
-    if(w>=18&&h>=10){add('text',{x:x+w/2,y:y+h/2-.8,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-id'},drawing,`KEEP S${piece.id}`);add('text',{x:x+w/2,y:y+h/2+4.2,'text-anchor':'middle','dominant-baseline':'middle',class:'piece-size'},drawing,`${fmt(piece.width)} × ${fmt(piece.height)}`);}else needsKey=true;
-    cursor+=span;if(cursor<(bin.mode==='length'?long:short)-1e-6){add('line',bin.mode==='length'?{x1:cursor,y1:0,x2:cursor,y2:short,class:'cut-line'}:{x1:0,y1:cursor,x2:long,y2:cursor,class:'cut-line'});add('text',bin.mode==='length'?{x:cursor+1.2,y:4,class:'cut-marker'}:{x:2,y:cursor-1.2,class:'cut-marker'},drawing,'CUT');}
-  });
-  const capacity=bin.mode==='length'?long:short,remainder=Math.max(0,capacity-cursor);
-  if(remainder>1e-6){const x=bin.mode==='length'?cursor:0,y=bin.mode==='width'?cursor:0,w=bin.mode==='length'?remainder:long,h=bin.mode==='width'?remainder:short;add('rect',{x,y,width:w,height:h,fill:`url(#waste-${diagramIndex})`,stroke:'#a23c29','stroke-width':.7});add('text',{x:x+w/2,y:y+h/2-1.5,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-label'},drawing,'CUT OFF');add('text',{x:x+w/2,y:y+h/2+3.4,'text-anchor':'middle','dominant-baseline':'middle',class:'waste-size'},drawing,bin.mode==='length'?`${fmt(short)} × ${fmt(remainder)}`:`${fmt(long)} × ${fmt(remainder)}`);}
-  wrap.append(drawing);
-  if(needsKey){const key=document.createElement('div');key.className='diagram-piece-key';bin.pieces.forEach(piece=>{const item=document.createElement('span'),swatch=document.createElement('i');item.append(swatch,document.createTextNode(`KEEP S${piece.id} · ${fmt(piece.width)} × ${fmt(piece.height)}`));key.append(item);});wrap.append(key);}
-  const note=document.createElement('p');note.className=remainder>1e-6?'has-waste':'no-waste';note.textContent=remainder>1e-6?'Green = keep · Red stripes = cut off':'KEEP THE ENTIRE SHEET · NOTHING DISCARDED';wrap.append(note);return wrap;
-}
-function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumber){
-  const n=value=>Number(value.toFixed(1)),same=(a,b)=>Math.abs(a-b)<1e-6;
+function buildCutPlan(pieces,stockWidth,stockLength){
+  const same=(a,b)=>Math.abs(a-b)<1e-6;
   const short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),bins=[],custom=[];
   const normalized=pieces.map(sheet=>{
     if(!sheet.rectangular)return {sheet};
@@ -56,23 +36,57 @@ function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumb
     bin.used+=item.span;bin.pieces.push(item.sheet);bin.spans.push(item.span);
   }
   custom.forEach(sheet=>bins.push({mode:'custom',used:sheet.used,pieces:[sheet],spans:[]}));
-  bins.forEach((bin,index)=>{
-    const card=document.createElement('article');card.className='cut-card';
-    const head=document.createElement('div');head.className='cut-card-head';
-    const title=document.createElement('strong');title.textContent=`Stock sheet ${firstStockNumber+index} · ${short/12} × ${long/12} ft`;head.append(title);card.append(head);
-    if(bin.mode!=='custom'){
-      card.append(cutPlanDiagram(bin,stockWidth,stockLength,index));
-      const capacity=bin.mode==='length'?long:short,positions=[];let position=0;
-      bin.spans.forEach(span=>{position+=span;if(position<capacity-1e-6||!same(bin.used,capacity))positions.push(n(position));});
-      const cut=document.createElement('div');cut.className='cut-measure cut-at';const cutName=document.createElement('b');cutName.textContent='CUT';const cutValue=document.createElement('span');
-      const places=positions.map(value=>`${value}″`).join(positions.length>1?', ':''),verb=bin.mode==='length'?'Crosscut':'Rip';
-      cutValue.textContent=`${verb} at ${places} from one ${bin.mode==='length'?'end':'edge'}${same(bin.used,capacity)?'; use all pieces':''}`;
-      cut.append(cutName,cutValue);card.append(cut);
-    }else{
-      const keep=document.createElement('div');keep.className='cut-measure keep';const keepName=document.createElement('b');keepName.textContent='KEEP';const keepValue=document.createElement('span');keepValue.textContent=`S${bin.pieces[0].id} · ${cutDescription(bin.pieces[0],'keep').replace(/^Keep /,'')}`;keep.append(keepName,keepValue);
-      const away=document.createElement('div');away.className='cut-measure away';const awayName=document.createElement('b');awayName.textContent='CUT AWAY';const awayValue=document.createElement('span');awayValue.textContent=cutDescription(bin.pieces[0],'away').replace(/^Cut away /,'');away.append(awayName,awayValue);card.append(keep,away);
+  return bins;
+}
+function installerDiagram(bin,stockWidth,stockLength,targetIndex,diagramIndex){
+  const ns='http://www.w3.org/2000/svg',short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),margin=15,fmt=value=>`${Number(value.toFixed(2))}″`;
+  const wrap=document.createElement('div');wrap.className='installer-diagram';
+  const drawing=document.createElementNS(ns,'svg'),vw=short+margin*2,vh=long+margin*2;drawing.setAttribute('viewBox',`0 0 ${vw} ${vh}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Original ${fmt(short)} by ${fmt(long)} sheet divided into ${bin.pieces.map(piece=>`S${piece.id}`).join(' and ')}`);
+  const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;};
+  const defs=add('defs',{}),pattern=add('pattern',{id:`installer-waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff0ec'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#d55b3e','stroke-width':2},pattern);
+  const edgeText=(x,y,text,attrs={})=>add('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle',...attrs},drawing,text);
+  edgeText(margin+short/2,6,fmt(short),{class:'pre-dim'});edgeText(margin+short/2,vh-5,fmt(short),{class:'pre-dim'});edgeText(6,margin+long/2,fmt(long),{class:'pre-dim',transform:`rotate(-90 6 ${margin+long/2})`});edgeText(vw-6,margin+long/2,fmt(long),{class:'pre-dim',transform:`rotate(90 ${vw-6} ${margin+long/2})`});
+  add('rect',{x:margin,y:margin,width:short,height:long,fill:'#f6f2e9',stroke:'#29362b','stroke-width':1.1});
+  const drawPostDimensions=(x,y,w,h)=>{
+    if(w>=12){edgeText(x+w/2,y+3.2,fmt(w),{class:'post-dim'});edgeText(x+w/2,y+h-3.2,fmt(w),{class:'post-dim'});}
+    if(h>=12){edgeText(x+3.2,y+h/2,fmt(h),{class:'post-dim',transform:`rotate(-90 ${x+3.2} ${y+h/2})`});edgeText(x+w-3.2,y+h/2,fmt(h),{class:'post-dim',transform:`rotate(90 ${x+w-3.2} ${y+h/2})`});}
+  };
+  let cursor=0;
+  bin.pieces.forEach((piece,index)=>{
+    const span=bin.spans[index],x=margin+(bin.mode==='width'?cursor:0),y=margin+(bin.mode==='length'?cursor:0),w=bin.mode==='width'?span:short,h=bin.mode==='length'?span:long;
+    add('rect',{x,y,width:w,height:h,fill:index===targetIndex?'#d8efb3':'#dde8ee',stroke:index===targetIndex?'#55752f':'#6c7f89','stroke-width':.55});drawPostDimensions(x,y,w,h);
+    if(w>=16&&h>=12)edgeText(x+w/2,y+h/2,index===targetIndex?`KEEP S${piece.id}`:`SAVE S${piece.id}`,{class:'piece-id'});
+    cursor+=span;if(cursor<(bin.mode==='length'?long:short)-1e-6)add('line',bin.mode==='length'?{x1:margin,y1:margin+cursor,x2:margin+short,y2:margin+cursor,class:'cut-line'}:{x1:margin+cursor,y1:margin,x2:margin+cursor,y2:margin+long,class:'cut-line'});
+  });
+  const capacity=bin.mode==='length'?long:short,remainder=Math.max(0,capacity-cursor);
+  if(remainder>1e-6){const x=margin+(bin.mode==='width'?cursor:0),y=margin+(bin.mode==='length'?cursor:0),w=bin.mode==='width'?remainder:short,h=bin.mode==='length'?remainder:long;add('rect',{x,y,width:w,height:h,fill:`url(#installer-waste-${diagramIndex})`,stroke:'#a23c29','stroke-width':.6});if(w>=12&&h>=10)edgeText(x+w/2,y+h/2,'DISCARD',{class:'waste-label'});}
+  wrap.append(drawing);return wrap;
+}
+function savedPieceDiagram(piece){
+  const ns='http://www.w3.org/2000/svg',w=piece.width,h=piece.height,margin=13,fmt=value=>`${Number(value.toFixed(2))}″`;
+  const wrap=document.createElement('div');wrap.className='saved-piece-diagram';const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${w+margin*2} ${h+margin*2}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Saved S${piece.id}, ${fmt(w)} by ${fmt(h)}`);
+  const add=(tag,attrs,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;drawing.append(el);return el;},text=(x,y,value,attrs={})=>add('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle',...attrs},value);
+  add('rect',{x:margin,y:margin,width:w,height:h,fill:'#d8efb3',stroke:'#29362b','stroke-width':1});text(margin+w/2,margin+h/2,`USE S${piece.id}`,{class:'piece-id'});
+  if(w>=10){text(margin+w/2,margin+3,fmt(w),{class:'post-dim'});text(margin+w/2,margin+h-3,fmt(w),{class:'post-dim'});}if(h>=10){text(margin+3,margin+h/2,fmt(h),{class:'post-dim',transform:`rotate(-90 ${margin+3} ${margin+h/2})`});text(margin+w-3,margin+h/2,fmt(h),{class:'post-dim',transform:`rotate(90 ${margin+w-3} ${margin+h/2})`});}
+  wrap.append(drawing);return wrap;
+}
+function instructionCard(title,subtitle){
+  const card=document.createElement('article');card.className='cut-card installer-card';const head=document.createElement('div');head.className='cut-card-head';const name=document.createElement('strong');name.textContent=title;const detail=document.createElement('span');detail.textContent=subtitle;head.append(name,detail);card.append(head);return card;
+}
+function renderCutInstructions(list,bins,stockWidth,stockLength){
+  const n=value=>Number(value.toFixed(1)),same=(a,b)=>Math.abs(a-b)<1e-6,short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength);
+  if(!bins.length)return;
+  const legend=document.createElement('div');legend.className='measure-color-key';legend.innerHTML='<span class="before">Blue = original sheet</span><span class="after">Green = new pieces</span>';list.append(legend);
+  bins.forEach((bin,binIndex)=>{
+    if(bin.mode==='custom'){
+      const piece=bin.pieces[0],card=instructionCard(`Cut S${piece.id}`,`${n(piece.width)}″ × ${n(piece.height)}″ piece`);const note=document.createElement('p');note.className='installer-note';note.textContent=cutDescription(piece,'away');card.append(note);list.append(card);return;
     }
+    const source=bin.pieces[0],card=instructionCard(`Cut S${source.id}`,`${short}″ × ${long}″ stock`);card.append(installerDiagram(bin,stockWidth,stockLength,0,binIndex));
+    const capacity=bin.mode==='length'?long:short,positions=[];let position=0;bin.spans.forEach(span=>{position+=span;if(position<capacity-1e-6||!same(bin.used,capacity))positions.push(n(position));});
+    const steps=document.createElement('ol');steps.className='installer-steps';const edge=bin.mode==='length'?'end':'edge';steps.innerHTML=`<li>Measure ${positions.map(value=>`${value}″`).join(' and ')} from one ${edge}.</li><li>Saw straight across each dotted line.</li><li>Label the kept piece S${source.id}.</li>`;card.append(steps);
+    if(bin.pieces.length>1){const save=document.createElement('p');save.className='save-reminder';save.innerHTML=`<strong>Save the other piece</strong>Use the ${n(bin.pieces[1].width)}″ × ${n(bin.pieces[1].height)}″ piece on Use S${bin.pieces[1].id}.`;card.append(save);}
     list.append(card);
+    bin.pieces.slice(1).forEach(piece=>{const use=instructionCard(`Use S${piece.id}`,`saved from Cut S${source.id}`);use.append(savedPieceDiagram(piece));const reminder=document.createElement('p');reminder.className='save-reminder';reminder.innerHTML=`<strong>Use saved piece</strong>Use the ${n(piece.width)}″ × ${n(piece.height)}″ piece from Cut S${source.id}.`;use.append(reminder);list.append(use);});
   });
 }
 function drawDrywall(c,view='sheets',complete=true){
@@ -92,20 +106,21 @@ function drawDrywall(c,view='sheets',complete=true){
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
     const fullCount=result.sheets.length-result.cutSheets,stockCount=fullCount+Math.ceil(result.sheets.filter(s=>!s.full).reduce((sum,s)=>sum+s.used,0)/(width*length)),stockWaste=Math.max(0,stockCount*width*length-result.used);
-    summary.textContent=state.sizePreset==='two-cuts'?'3 sheets total · 2 full sheets + 2 half-sheet pieces · 2 cuts':complete?`${stockCount} stock sheets · ${fullCount} full pieces · ${result.cutSheets} cut pieces · ${result.trimEdges} trim edges · ${(stockWaste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
+    summary.textContent=state.sizePreset==='two-cuts'?'3 sheets total · 2 full sheets + 2 half-sheet pieces · 1 physical cut':complete?`${stockCount} stock sheets · ${fullCount} full pieces · ${result.cutSheets} cut pieces · ${result.trimEdges} trim edges · ${(stockWaste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
     const displaySheets=result.sheets.map(s=>{const center=complete?sheetLabelPoint(s.polygons):[s.x+s.w/2,s.y+s.h/2],imagePoint=G.project(c.forward,center);return {...s,center,imagePoint};}).sort((a,b)=>{
       const score=p=>Math.hypot((state.image.width-p.imagePoint[0])/state.image.width,(state.image.height-p.imagePoint[1])/state.image.height);
       return score(a)-score(b);
     }).map((s,i)=>({...s,id:i+1}));
+    const cutPlan=complete?buildCutPlan(displaySheets.filter(sheet=>!sheet.full),width,length):[];
     for(const s of displaySheets){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':`CUT`} S${s.id}${needsCut?` · ${cutDescription(s,'keep',true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
+      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL ':''}S${s.id}${needsCut?` · ${cutDescription(s,'keep',true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
       sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
     }
-    if(complete)renderCutInstructions(list,displaySheets.filter(sheet=>!sheet.full),width,length,fullCount+1);
+    if(complete)renderCutInstructions(list,cutPlan,width,length);
     if(!list.children.length){const note=document.createElement('p');note.className='no-cuts-note';note.textContent='No cuts required.';list.append(note);}
   }catch(e){summary.textContent=`Sheet layout unavailable: ${e.message}`;}
 }
