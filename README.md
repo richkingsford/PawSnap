@@ -60,7 +60,7 @@ The two original supplied photos are `framing-room.jpg` and `framing-wide.jpg`. 
 
 ## Drywall sheet overlay
 
-Choose **No sheet-rock** (default), a **4 × 8**, **4 × 10**, or **4 × 12 ft drywall sheet**. These are sheet face dimensions; thickness and installation specifications are not selected by this control. A single piece is called a drywall sheet or panel. USG lists 48-inch-wide panels in 8–12-foot lengths: https://assemblies-tools.usg.com/content/usgcom/en/products/walls/drywall/drywall-panels/lightweight-panels/sheetrock-ultralight-panels.141134.html.
+Choose **No sheet-rock** (default), a **4 × 8 (48 × 96 inches)**, **4 × 10 (48 × 120 inches)**, or **4 × 12 ft (48 × 144 inches) drywall sheet**. These are sheet face dimensions; thickness and installation specifications are not selected by this control. A single piece is called a drywall sheet or panel. USG lists 48-inch-wide panels in 8–12-foot lengths: https://assemblies-tools.usg.com/content/usgcom/en/products/walls/drywall/drywall-panels/lightweight-panels/sheetrock-ultralight-panels.141134.html.
 
 The interface defaults to **Virtual sheets** with a 4 × 8 ft drywall sheet selected. Every sample selection and uploaded photo returns to this view. Full sheets use a blue overlay; partial sheets use a solid amber overlay and an `S# · KEEP …` label. Uploaded photos begin with four editable ceiling corners and need either entered line dimensions or reference calibration before sheets can be placed. **No sheet-rock** remains available in the sheet-size dropdown to disable layout.
 
