@@ -16,6 +16,52 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
+function renderCutInstructions(list,pieces,stockWidth,stockLength,firstStockNumber){
+  const n=value=>Number(value.toFixed(1)),same=(a,b)=>Math.abs(a-b)<1e-6;
+  const short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),bins=[],custom=[];
+  const normalized=pieces.map(sheet=>{
+    if(!sheet.rectangular)return {sheet};
+    const a=sheet.width,b=sheet.height;
+    if(same(a,short)&&b<=long+1e-6)return {sheet,mode:'length',span:b};
+    if(same(b,short)&&a<=long+1e-6)return {sheet,mode:'length',span:a};
+    if(same(a,long)&&b<=short+1e-6)return {sheet,mode:'width',span:b};
+    if(same(b,long)&&a<=short+1e-6)return {sheet,mode:'width',span:a};
+    return {sheet};
+  }).sort((a,b)=>(b.span||0)-(a.span||0));
+  for(const item of normalized){
+    if(!item.mode){custom.push(item.sheet);continue;}
+    const capacity=item.mode==='length'?long:short;
+    let bin=bins.find(candidate=>candidate.mode===item.mode&&candidate.used+item.span<=capacity+1e-6);
+    if(!bin){bin={mode:item.mode,used:0,pieces:[],spans:[]};bins.push(bin);}
+    bin.used+=item.span;bin.pieces.push(item.sheet);bin.spans.push(item.span);
+  }
+  custom.forEach(sheet=>bins.push({mode:'custom',used:sheet.used,pieces:[sheet],spans:[]}));
+  bins.forEach((bin,index)=>{
+    const card=document.createElement('article');card.className='cut-card';
+    const head=document.createElement('div');head.className='cut-card-head';
+    const title=document.createElement('strong');title.textContent=`Stock sheet ${firstStockNumber+index}`;head.append(title);card.append(head);
+    const ids=bin.pieces.map(piece=>`S${piece.id}`).join(' + '),groups=new Map();
+    bin.pieces.forEach(piece=>{const key=`${n(piece.width)}″ × ${n(piece.height)}″`;groups.set(key,(groups.get(key)||0)+1);});
+    const kept=[...groups].map(([size,count])=>count>1?`${count} pieces · ${size} each`:size).join('; ');
+    const keep=document.createElement('div');keep.className='cut-measure keep';
+    const keepName=document.createElement('b');keepName.textContent='KEEP';const keepValue=document.createElement('span');keepValue.textContent=`${ids} · ${kept}`;keep.append(keepName,keepValue);card.append(keep);
+    const away=document.createElement('div');away.className='cut-measure away';
+    const awayName=document.createElement('b');awayName.textContent='CUT AWAY';const awayValue=document.createElement('span');
+    if(bin.mode==='length')awayValue.textContent=same(bin.used,long)?'None — keep both sides of the cut':`${n(short)}″ × ${n(long-bin.used)}″ remaining`;
+    else if(bin.mode==='width')awayValue.textContent=same(bin.used,short)?'None — keep both sides of the cut':`${n(short-bin.used)}″ × ${n(long)}″ remaining`;
+    else awayValue.textContent=cutDescription(bin.pieces[0],'away').replace(/^Cut away /,'');
+    away.append(awayName,awayValue);card.append(away);
+    if(bin.mode!=='custom'){
+      const capacity=bin.mode==='length'?long:short,positions=[];let position=0;
+      bin.spans.forEach(span=>{position+=span;if(position<capacity-1e-6||!same(bin.used,capacity))positions.push(n(position));});
+      const cut=document.createElement('div');cut.className='cut-measure cut-at';const cutName=document.createElement('b');cutName.textContent='CUT';const cutValue=document.createElement('span');
+      const places=positions.map(value=>`${value}″`).join(positions.length>1?', ':''),verb=bin.mode==='length'?'Crosscut':'Rip';
+      cutValue.textContent=`${verb} at ${places} from one ${bin.mode==='length'?'end':'edge'}${same(bin.used,capacity)?'; use all pieces':''}`;
+      cut.append(cutName,cutValue);card.append(cut);
+    }
+    list.append(card);
+  });
+}
 function drawDrywall(c,view='sheets',complete=true){
   const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('cutInstructions');
   summary.textContent=view!=='sheets'?'Switch to Virtual sheets to see the optimized layout.':selected==='none'?'No drywall sheet selected. Choose a sheet size to create a layout.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
@@ -45,16 +91,8 @@ function drawDrywall(c,view='sheets',complete=true){
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
       const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL':`CUT`} S${s.id}${needsCut?` · ${cutDescription(s,'keep',true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
       sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
-      if(!complete||!needsCut)continue;
-      const card=document.createElement('article');card.className='cut-card';
-      const head=document.createElement('div');head.className='cut-card-head';
-      const title=document.createElement('strong');title.textContent=`Cut S${s.id}${s.polygons.length>1?` · ${s.polygons.length} pieces`:''}`;
-      const button=document.createElement('button');button.textContent='Cut outline';button.setAttribute('aria-label',`Download cut outline for sheet S${s.id}`);button.onclick=()=>downloadSheetOutline(s);
-      head.append(title,button);
-      const measure=(kind,text)=>{const row=document.createElement('div');row.className=`cut-measure ${kind}`;const name=document.createElement('b');name.textContent=kind==='keep'?'KEEP':'CUT AWAY';const value=document.createElement('span');value.textContent=text;row.append(name,value);return row;};
-      card.append(head,measure('keep',cutDescription(s,'keep').replace(/^Keep /,'')),measure('away',cutDescription(s,'away').replace(/^Cut away /,'')));
-      list.append(card);
     }
+    if(complete)renderCutInstructions(list,displaySheets.filter(sheet=>!sheet.full),width,length,fullCount+1);
     if(!list.children.length){const note=document.createElement('p');note.className='no-cuts-note';note.textContent='No cuts required.';list.append(note);}
   }catch(e){summary.textContent=`Sheet layout unavailable: ${e.message}`;}
 }
