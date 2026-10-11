@@ -16,6 +16,13 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
+function drywallSheetLabel(point,sheet,needsCut,parent){
+  const fontSize=Math.max(22,state.image.width/18),color=needsCut?'#fff2d6':'#ffffff',text=svg('text',{x:point[0],y:point[1],fill:color,'font-size':fontSize,'font-weight':800,style:`font-size:${fontSize}px;fill:${color};font-weight:800`,'paint-order':'stroke',stroke:'#182218','stroke-width':Math.max(4.5,state.image.width/105),'stroke-linejoin':'round','font-family':'Manrope, sans-serif','text-anchor':'middle','dominant-baseline':'middle'},parent);
+  if(!needsCut){text.textContent=`FULL S${sheet.id}`;return text;}
+  const first=svg('tspan',{x:point[0],dy:'-.42em'},text);first.textContent=`S${sheet.id} · KEEP`;
+  const secondSize=fontSize*.82,second=svg('tspan',{x:point[0],dy:'1.18em','font-size':secondSize,style:`font-size:${secondSize}px`},text);second.textContent=`${Number(sheet.width.toFixed(1))}×${Number(sheet.height.toFixed(1))}″`;
+  return text;
+}
 function buildCutPlan(pieces,stockWidth,stockLength){
   const same=(a,b)=>Math.abs(a-b)<1e-6;
   const short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),bins=[],custom=[];
@@ -81,12 +88,13 @@ function renderCutInstructions(list,bins,stockWidth,stockLength){
     if(bin.mode==='custom'){
       const piece=bin.pieces[0],card=instructionCard(`Cut S${piece.id}`,`${n(piece.width)}″ × ${n(piece.height)}″ piece`);const note=document.createElement('p');note.className='installer-note';note.textContent=cutDescription(piece,'away');card.append(note);list.append(card);return;
     }
-    const source=bin.pieces[0],card=instructionCard(`Cut S${source.id}`,`${short}″ × ${long}″ stock`);card.append(installerDiagram(bin,stockWidth,stockLength,0,binIndex));
+    const source=bin.pieces[0],card=instructionCard(`Cut S${source.id}`,`${short}″ × ${long}″ stock`),body=document.createElement('div'),actions=document.createElement('div');body.className='installer-card-body';actions.className='installer-actions';body.append(installerDiagram(bin,stockWidth,stockLength,0,binIndex));
     const capacity=bin.mode==='length'?long:short,positions=[];let position=0;bin.spans.forEach(span=>{position+=span;if(position<capacity-1e-6||!same(bin.used,capacity))positions.push(n(position));});
-    const steps=document.createElement('ol');steps.className='installer-steps';const edge=bin.mode==='length'?'end':'edge';steps.innerHTML=`<li>Measure ${positions.map(value=>`${value}″`).join(' and ')} from one ${edge}.</li><li>Saw straight across each dotted line.</li><li>Label the kept piece S${source.id}.</li>`;card.append(steps);
-    if(bin.pieces.length>1){const save=document.createElement('p');save.className='save-reminder';save.innerHTML=`<strong>Save the other piece</strong>Use the ${n(bin.pieces[1].width)}″ × ${n(bin.pieces[1].height)}″ piece on Use S${bin.pieces[1].id}.`;card.append(save);}
+    const steps=document.createElement('ol');steps.className='installer-steps';const edge=bin.mode==='length'?'end':'edge';steps.innerHTML=`<li>Measure ${positions.map(value=>`${value}″`).join(' and ')} from one ${edge}.</li><li>Saw straight across each dotted line.</li><li>Label the kept piece S${source.id}.</li>`;actions.append(steps);
+    if(bin.pieces.length>1){const save=document.createElement('p');save.className='save-reminder';save.innerHTML=`<strong>Save the other piece</strong>Use the ${n(bin.pieces[1].width)}″ × ${n(bin.pieces[1].height)}″ piece on Use S${bin.pieces[1].id}.`;actions.append(save);}
+    body.append(actions);card.append(body);
     list.append(card);
-    bin.pieces.slice(1).forEach(piece=>{const use=instructionCard(`Use S${piece.id}`,`saved from Cut S${source.id}`);use.append(savedPieceDiagram(piece));const reminder=document.createElement('p');reminder.className='save-reminder';reminder.innerHTML=`<strong>Use saved piece</strong>Use the ${n(piece.width)}″ × ${n(piece.height)}″ piece from Cut S${source.id}.`;use.append(reminder);list.append(use);});
+    bin.pieces.slice(1).forEach(piece=>{const use=instructionCard(`Use S${piece.id}`,`saved from Cut S${source.id}`),useBody=document.createElement('div'),useActions=document.createElement('div');useBody.className='installer-card-body';useActions.className='installer-actions';useBody.append(savedPieceDiagram(piece));const useSteps=document.createElement('ol');useSteps.className='installer-steps';useSteps.innerHTML=`<li>Find the saved ${n(piece.width)}″ × ${n(piece.height)}″ piece.</li><li>Confirm it came from Cut S${source.id}.</li><li>Label that piece S${piece.id}.</li>`;useActions.append(useSteps);const reminder=document.createElement('p');reminder.className='save-reminder';reminder.innerHTML=`<strong>Use saved piece</strong>Use the ${n(piece.width)}″ × ${n(piece.height)}″ piece from Cut S${source.id}.`;useActions.append(reminder);useBody.append(useActions);use.append(useBody);list.append(use);});
   });
 }
 function drawDrywall(c,view='sheets',complete=true){
@@ -117,8 +125,9 @@ function drawDrywall(c,view='sheets',complete=true){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      const sheetLabel=label(s.imagePoint,complete?`${s.full?'FULL ':''}S${s.id}${needsCut?` · ${cutDescription(s,'keep',true)}`:''}`:`${s.id} · ${sizeLabel}`,needsCut?'#fff2d6':'#ffffff',group);
-      sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
+      if(complete)drywallSheetLabel(s.imagePoint,s,needsCut,group);else{
+        const sheetLabel=label(s.imagePoint,`${s.id} · ${sizeLabel}`,'#ffffff',group);sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
+      }
     }
     if(complete)renderCutInstructions(list,cutPlan,width,length);
     if(!list.children.length){const note=document.createElement('p');note.className='no-cuts-note';note.textContent='No cuts required.';list.append(note);}
