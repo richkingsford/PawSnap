@@ -46,7 +46,7 @@ function buildCutPlan(pieces,stockWidth,stockLength){
   return bins;
 }
 function installerDiagram(bin,stockWidth,stockLength,targetIndex,diagramIndex){
-  const ns='http://www.w3.org/2000/svg',short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),margin=15,fmt=value=>`${Number(value.toFixed(2))}″`;
+  const ns='http://www.w3.org/2000/svg',short=Math.min(stockWidth,stockLength),long=Math.max(stockWidth,stockLength),margin=15,fmt=value=>`${Number(value.toFixed(1))}″`;
   const wrap=document.createElement('div');wrap.className='installer-diagram';
   const drawing=document.createElementNS(ns,'svg'),vw=short+margin*2,vh=long+margin*2;drawing.setAttribute('viewBox',`0 0 ${vw} ${vh}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Original ${fmt(short)} by ${fmt(long)} sheet divided into ${bin.pieces.map(piece=>`S${piece.id}`).join(' and ')}`);
   const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;};
@@ -70,7 +70,7 @@ function installerDiagram(bin,stockWidth,stockLength,targetIndex,diagramIndex){
   wrap.append(drawing);return wrap;
 }
 function singleCutDiagram(step,diagramIndex){
-  const ns='http://www.w3.org/2000/svg',marginX=40,marginY=15,fmt=value=>`${Number(value.toFixed(2))}″`,sheetWidth=step.mode==='length'?step.crossSpan:step.sourceSpan,sheetHeight=step.mode==='length'?step.sourceSpan:step.crossSpan,vw=sheetWidth+marginX*2,vh=sheetHeight+marginY*2;
+  const ns='http://www.w3.org/2000/svg',marginX=40,marginY=15,fmt=value=>`${Number(value.toFixed(1))}″`,sheetWidth=step.mode==='length'?step.crossSpan:step.sourceSpan,sheetHeight=step.mode==='length'?step.sourceSpan:step.crossSpan,vw=sheetWidth+marginX*2,vh=sheetHeight+marginY*2;
   const wrap=document.createElement('div');wrap.className='installer-diagram';const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${vw} ${vh}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`One cut creates S${step.piece.id} from a ${fmt(sheetWidth)} by ${fmt(sheetHeight)} piece`);
   const add=(tag,attrs,parent=drawing,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;parent.append(el);return el;},edgeText=(x,y,text,attrs={})=>add('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle',...attrs},drawing,text);
   const defs=add('defs',{}),pattern=add('pattern',{id:`single-cut-waste-${diagramIndex}`,width:5,height:5,patternUnits:'userSpaceOnUse',patternTransform:'rotate(45)'},defs);add('rect',{width:5,height:5,fill:'#fff0ec'},pattern);add('line',{x1:0,y1:0,x2:0,y2:5,stroke:'#d55b3e','stroke-width':2},pattern);
@@ -85,7 +85,7 @@ function singleCutDiagram(step,diagramIndex){
   wrap.append(drawing);return wrap;
 }
 function savedPieceDiagram(piece){
-  const ns='http://www.w3.org/2000/svg',w=piece.width,h=piece.height,margin=13,fmt=value=>`${Number(value.toFixed(2))}″`;
+  const ns='http://www.w3.org/2000/svg',w=piece.width,h=piece.height,margin=13,fmt=value=>`${Number(value.toFixed(1))}″`;
   const wrap=document.createElement('div');wrap.className='saved-piece-diagram';const drawing=document.createElementNS(ns,'svg');drawing.setAttribute('viewBox',`0 0 ${w+margin*2} ${h+margin*2}`);drawing.setAttribute('role','img');drawing.setAttribute('aria-label',`Saved S${piece.id}, ${fmt(w)} by ${fmt(h)}`);
   const add=(tag,attrs,text)=>{const el=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));if(text)el.textContent=text;drawing.append(el);return el;},text=(x,y,value,attrs={})=>add('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle',...attrs},value);
   add('rect',{x:margin,y:margin,width:w,height:h,fill:'#d8efb3',stroke:'#29362b','stroke-width':1});text(margin+w/2,margin+h/2,`USE S${piece.id}`,{class:'piece-id'});
@@ -132,7 +132,7 @@ function drawDrywall(c,view='sheets',complete=true){
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
     const fullCount=result.sheets.length-result.cutSheets,stockCount=fullCount+Math.ceil(result.sheets.filter(s=>!s.full).reduce((sum,s)=>sum+s.used,0)/(width*length)),stockWaste=Math.max(0,stockCount*width*length-result.used);
-    summary.textContent=state.sizePreset==='two-cuts'?'3 sheets total · 2 full sheets + 2 half-sheet pieces · 1 physical cut':complete?`${stockCount} stock sheets · ${fullCount} full pieces · ${result.cutSheets} cut pieces · ${result.trimEdges} trim edges · ${(stockWaste/144).toFixed(1)} sq ft offcut · ${result.w}″ × ${result.h}″`:`${result.sheets.length} visible sheets · ${sizeLabel} · no cuts shown — ceiling ends are outside the photo`;
+    summary.textContent=state.sizePreset==='two-cuts'?'3 sheets · 1 cut':complete?`${stockCount} sheets · ${(stockWaste/144).toFixed(1)} sq ft offcut`:`${result.sheets.length} visible sheets · cuts unknown`;
     const group=svg('g',{'data-layer':'drywall','pointer-events':'none'});
     const displaySheets=result.sheets.map(s=>{const center=complete?sheetLabelPoint(s.polygons):[s.x+s.w/2,s.y+s.h/2],imagePoint=G.project(c.forward,center);return {...s,center,imagePoint};}).sort((a,b)=>{
       const score=p=>Math.hypot((state.image.width-p.imagePoint[0])/state.image.width,(state.image.height-p.imagePoint[1])/state.image.height);
@@ -153,7 +153,7 @@ function drawDrywall(c,view='sheets',complete=true){
 }
 function downloadSheetOutline(s){
   const ns='http://www.w3.org/2000/svg',doc=document.createElementNS(ns,'svg'),add=(tag,attrs,text)=>{const el=document.createElementNS(ns,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,v);if(text)el.textContent=text;doc.append(el);return el;};
-  const points=[];let d='';s.polygons.forEach((rings,j)=>rings.forEach((ring,k)=>{d+=ring.map((p,i)=>`${i?'L':'M'}${p[0]-s.x+8} ${p[1]-s.y+16}`).join(' ')+'Z ';ring.slice(0,-1).forEach((p,i)=>points.push(`Piece ${j+1}${k?' hole':''}, vertex ${i+1}: ${(p[0]-s.x).toFixed(2)}, ${(p[1]-s.y).toFixed(2)} in`));}));
+  const points=[];let d='';s.polygons.forEach((rings,j)=>rings.forEach((ring,k)=>{d+=ring.map((p,i)=>`${i?'L':'M'}${p[0]-s.x+8} ${p[1]-s.y+16}`).join(' ')+'Z ';ring.slice(0,-1).forEach((p,i)=>points.push(`Piece ${j+1}${k?' hole':''}, vertex ${i+1}: ${(p[0]-s.x).toFixed(1)}, ${(p[1]-s.y).toFixed(1)} in`));}));
   doc.setAttribute('xmlns',ns);doc.setAttribute('viewBox',`0 0 ${Math.max(s.w+16,150)} ${s.h+52+points.length*5}`);doc.setAttribute('width','900');
   add('rect',{x:0,y:0,width:'100%',height:'100%',fill:'white'});
   add('text',{x:8,y:8,'font-size':5},`S${s.id} · Stock ${s.w} × ${s.h} inches · ${s.trimEdges} trim edges`);
