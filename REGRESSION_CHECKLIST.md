@@ -69,3 +69,6 @@ Run this checklist after every interaction or geometry change.
 - [ ] Point menus remain fully visible at the top, right, bottom, and left edges.
 - [ ] Open-photo layouts show only complete drywall sheets, with one centered label per sheet.
 - [ ] No cut is shown where the photographed ceiling boundary is incomplete.
+- [ ] Confirm the main workspace does not show the redundant calibration instruction, status badge, mode label, ceiling-plane eyebrow, or sheet/offcut summary.
+- [ ] Confirm Drywall section 3 contains the sheet-size selector without the redundant Full/Cut color squares.
+- [ ] Confirm the former **Ceiling battens** sample is labeled **Sheets of Drywall on a Ceiling** in both its button and workspace title.
