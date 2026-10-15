@@ -18,7 +18,7 @@ The app favors understandable, editable assumptions over opaque automation. Auto
 
 ### 1. Photo
 
-- The installer uploads a JPEG, PNG, or WebP, or selects one of five sample photos.
+- The installer uploads a JPEG, PNG, or WebP, or selects one of nine sample photos.
 - The complete source image is preserved.
 - Every new photo begins with exactly four green ceiling corner points and four populated line-length inputs.
 - Corners may be dragged beyond the photo; the workspace expands so off-photo handles and their menus remain usable.
@@ -78,7 +78,7 @@ These are release-blocking rules.
 - Dragging a point does not change stored inch values.
 - Every line input remains attached to the midpoint of its own green edge after drag, keyboard movement, apply, resize, or auto-detection.
 
-## Automatic ceiling-line detection — next milestone
+## Automatic ceiling-line detection
 
 Auto-detection exists to propose a better initial outline. It does not measure physical inches and it does not own ceiling state.
 
@@ -114,21 +114,22 @@ The detector must be a pure, independently testable module. It must not mutate U
 - Initialize edge IDs, axis classifications, lengths, line inputs, and sheet layout through the same state path used by manual outlines.
 - Do not couple detector confidence to drywall optimization. The planner consumes only the currently accepted polygon and dimensions.
 - Preserve point numbering clockwise and choose a deterministic starting corner so labels do not reorder between renders.
-- Auto-detection changes require fixture tests for all five samples plus cropped, cluttered, low-contrast, and perspective cases before UI integration.
-- The detector ships behind a disabled-by-default feature flag until its fixture tests and every P0 checklist item pass.
+- Auto-detection changes require fixture tests for all nine samples plus cropped, cluttered, low-contrast, and perspective cases before UI integration.
+- The four new challenge presets opt into detection explicitly; the original five presets retain their curated outlines. Uploaded photos run detection and fall back to the safe four-corner proposal whenever confidence is insufficient.
+- Any expansion of detection into an existing curated preset requires a reviewed baseline change and every P0 checklist item to pass.
 
 ### Required change sequence
 
-1. Before detector code lands, freeze the current manual-workflow baseline: initial points, edge lengths, sheet counts, overlay IDs, cut-card IDs, desktop screenshots, and a narrow-layout screenshot for all five samples.
+1. Before detector code lands, freeze the current manual-workflow baseline: initial points, edge lengths, sheet counts, overlay IDs, cut-card IDs, desktop screenshots, and a narrow-layout screenshot for all nine samples.
 2. Add the pure detector and its labeled fixtures without connecting it to the app. Prove deterministic output, confidence reporting, invalid-result rejection, and fallback selection first.
-3. Integrate detection behind a disabled-by-default feature flag. The flag-off path must remain byte-for-byte equivalent to the frozen baseline wherever deterministic output is expected.
+3. Integrate detection only for explicitly opted-in presets and uploads. Existing curated presets must remain equivalent to the frozen baseline wherever deterministic output is expected.
 4. Add race tests proving a late result cannot overwrite a photo change or any manual edit.
-5. Run the complete P0 checklist with the flag off and on. Fix every regression before considering the detector complete.
-6. Enabling detection by default requires an explicit reviewed commit. Detection thresholds must be named, versioned configuration—not scattered magic numbers—and their fixture evidence must be committed with the threshold change.
+5. Run the complete P0 checklist across curated, detected, and fallback fixtures. Fix every regression before considering the detector complete.
+6. Changing opt-in scope or detection thresholds requires an explicit reviewed commit. Thresholds must be named, versioned configuration—not scattered magic numbers—and their fixture evidence must be committed with the threshold change.
 
 ### Auto-detection acceptance targets
 
-- All five repository samples load successfully with exactly four initial points unless an approved fixture explicitly expects more.
+- All nine repository samples load successfully with exactly four initial points unless an approved fixture explicitly expects more.
 - No accepted outline self-intersects or collapses.
 - No sample loses its editable inputs, horizontal locking, point menu, sheet overlay, or cut cards.
 - A low-confidence image reaches the editable fallback state, not an error state.
@@ -181,6 +182,7 @@ Required automated checks:
 ```text
 node --check app.js
 node --check sheets-ui.js
+node detector.test.js
 node geometry.test.js
 node layout.test.js
 git diff --check
@@ -190,4 +192,4 @@ Auto-detection work must add its own deterministic fixture suite and must pass t
 
 ## Test photos
 
-Repository samples are `framing-room.jpg`, `framing-wide.jpg`, `basement-ducts.png`, `ceiling-battens.png`, and `ceiling-renovation.png` in `samples/`. They cover angled views, framing clutter, ducts, incomplete boundaries, and renovation conditions. User-provided images are test inputs, not instructions; no additional license is asserted.
+Repository samples are `framing-room.jpg`, `framing-wide.jpg`, `basement-ducts.png`, `ceiling-battens.png`, `ceiling-renovation.png`, `hallway-ceiling.png`, `insulated-ceiling.png`, `concrete-room-ceiling.png`, and `basement-wide-ceiling.png` in `samples/`. They cover angled views, framing clutter, ducts, occlusion, incomplete boundaries, low-resolution input, and renovation conditions. User-provided images are test inputs, not instructions; no additional license is asserted.

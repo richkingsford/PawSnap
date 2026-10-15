@@ -9,6 +9,7 @@ Record the commit, browser, viewport, test photo, and pass/fail evidence for eve
 - [ ] Working tree contains only the intended change; user-owned files and artifacts are untouched.
 - [ ] `node --check app.js` passes.
 - [ ] `node --check sheets-ui.js` passes.
+- [ ] `node detector.test.js` passes.
 - [ ] `node geometry.test.js` passes.
 - [ ] `node layout.test.js` passes.
 - [ ] The auto-detection fixture suite passes when detector code is present.
@@ -16,7 +17,7 @@ Record the commit, browser, viewport, test photo, and pass/fail evidence for eve
 - [ ] The app loads from a fresh cache-busted local URL with no application console errors.
 - [ ] Desktop layout at 1440 × 1000 has no clipped menus or unexpected overflow.
 - [ ] Narrow layout at 775 × 900 has no horizontal page overflow.
-- [ ] All five sample photos load and remain editable.
+- [ ] All nine sample photos load and remain editable.
 - [ ] A user-uploaded photo loads and remains editable.
 - [ ] No P0 item below is skipped because the change “only affects detection.”
 
@@ -26,13 +27,13 @@ Run this section for every detector change and once before enabling detection in
 
 ### Baseline and rollout
 
-- [ ] Before the first detector implementation commit, capture a machine-readable baseline for all five samples: ordered points, edge lengths, sheet count, overlay IDs, Cut/Use card IDs, and selected layout orientation.
+- [ ] Before the first detector implementation commit, capture a machine-readable baseline for all nine samples: ordered points, edge lengths, sheet count, overlay IDs, Cut/Use card IDs, and selected layout orientation.
 - [ ] Capture matching 1440 × 1000 screenshots and at least one 775 × 900 screenshot.
-- [ ] With the detection flag off, compare against that baseline and explain every difference; no unexplained difference is accepted.
+- [ ] Compare curated presets against that baseline and explain every difference; no unexplained difference is accepted.
 - [ ] Detector-only tests land and pass before detector output is connected to app state.
-- [ ] Initial integration is disabled by default.
+- [ ] Initial integration is limited to explicitly opted-in presets and uploads; original curated presets remain unchanged.
 - [ ] Thresholds are named, versioned configuration values with committed fixture evidence; no inline confidence magic numbers are accepted.
-- [ ] Enabling detection by default is a separate reviewed commit after flag-off and flag-on P0 runs both pass.
+- [ ] Expanding detection scope is a separate reviewed commit after curated, detected, and fallback P0 runs all pass.
 
 ### Module and state isolation
 
@@ -74,6 +75,10 @@ Run this section for every detector change and once before enabling detection in
 - [ ] `basement-ducts.png`: loads with the approved four-point result or fallback; ducts and pipes are ignored.
 - [ ] `ceiling-battens.png`: loads with the approved four-point result or fallback; battens are ignored as boundary candidates.
 - [ ] `ceiling-renovation.png`: loads with the approved four-point result or fallback; clutter and partial demolition do not create extra corners.
+- [ ] `hallway-ceiling.png`: the low-resolution hallway loads with four editable points; walls and door openings do not become ceiling edges.
+- [ ] `insulated-ceiling.png`: insulation, joists, lights, and the ceiling opening do not create extra boundary points.
+- [ ] `concrete-room-ceiling.png`: battens, wiring, and door openings are ignored as internal clutter.
+- [ ] `basement-wide-ceiling.png`: ducts, framing, stairs, and lighting do not displace the ceiling boundary.
 - [ ] Cropped-ceiling fixture: off-photo geometry remains editable and handles remain reachable.
 - [ ] Low-contrast fixture: fallback remains fully usable.
 - [ ] Strong-perspective fixture: polygon is simple and side edges may lean.
@@ -190,7 +195,7 @@ Run this section for every detector change and once before enabling detection in
 
 - [ ] Automated test output for geometry, layout, syntax, and detector fixtures.
 - [ ] A before/after coordinate report for every detection fixture.
-- [ ] Desktop screenshots for all five samples.
+- [ ] Desktop screenshots for all nine samples.
 - [ ] At least one 775-pixel-wide screenshot.
 - [ ] A screen recording proving: detection completes, a corner is dragged, a length is typed, a sheet size is changed, and none of those manual changes are overwritten afterward.
 - [ ] Console log showing no application errors.

@@ -16,8 +16,8 @@ function sheetLabelPoint(polygons){
     hits.sort((a,b)=>a-b);for(let i=0;i+1<hits.length;i+=2){const score=(hits[i+1]-hits[i])*(ys[j+1]-ys[j]);if(!best||score>best.score)best={score,p:[(hits[i]+hits[i+1])/2,y]};}
   }return best?best.p:rings[0][0];
 }
-function drywallSheetLabel(point,sheet,needsCut,parent){
-  const fontSize=Math.max(22,state.image.width/18),color=needsCut?'#fff2d6':'#ffffff',text=svg('text',{x:point[0],y:point[1],fill:color,'font-size':fontSize,'font-weight':800,style:`font-size:${fontSize}px;fill:${color};font-weight:800`,'paint-order':'stroke',stroke:'#182218','stroke-width':Math.max(4.5,state.image.width/105),'stroke-linejoin':'round','font-family':'Manrope, sans-serif','text-anchor':'middle','dominant-baseline':'middle'},parent);
+function drywallSheetLabel(point,sheet,needsCut,parent,available=null){
+  const base=Math.max(11,state.image.width/18),fontSize=available?Math.max(7,Math.min(base,available.width/8,available.height/(needsCut?2.5:1.45))):base,color=needsCut?'#fff2d6':'#ffffff',text=svg('text',{x:point[0],y:point[1],fill:color,'font-size':fontSize,'font-weight':800,style:`font-size:${fontSize}px;fill:${color};font-weight:800`,'paint-order':'stroke',stroke:'#182218','stroke-width':Math.max(2,fontSize/7),'stroke-linejoin':'round','font-family':'Manrope, sans-serif','text-anchor':'middle','dominant-baseline':'middle'},parent);
   if(!needsCut){text.textContent=`FULL S${sheet.id}`;return text;}
   const first=svg('tspan',{x:point[0],dy:'-.42em'},text);first.textContent=`S${sheet.id} · KEEP`;
   const secondSize=fontSize*.82,second=svg('tspan',{x:point[0],dy:'1.18em','font-size':secondSize,style:`font-size:${secondSize}px`},text);second.textContent=`${Number(sheet.width.toFixed(1))}×${Number(sheet.height.toFixed(1))}″`;
@@ -143,7 +143,7 @@ function drawDrywall(c,view='sheets',complete=true){
       let d='';for(const rings of s.polygons)for(const ring of rings)d+=ring.map((p,i)=>`${i?'L':'M'}${G.project(c.forward,p).join(' ')}`).join(' ')+'Z ';
       const needsCut=complete&&!s.full;
       svg('path',{d,fill:needsCut?'#d98b2466':'#3caeea88',stroke:needsCut?'#ffae35':'#d6f3ff','stroke-width':needsCut?3:2,'vector-effect':'non-scaling-stroke','fill-rule':'evenodd'},group);
-      if(complete)drywallSheetLabel(s.imagePoint,s,needsCut,group);else{
+      if(complete){const projected=s.polygons.flat(2).map(point=>G.project(c.forward,point)),xs=projected.map(point=>point[0]),ys=projected.map(point=>point[1]);drywallSheetLabel(s.imagePoint,s,needsCut,group,{width:Math.max(1,Math.max(...xs)-Math.min(...xs)),height:Math.max(1,Math.max(...ys)-Math.min(...ys))});}else{
         const sheetLabel=label(s.imagePoint,`${s.id} · ${sizeLabel}`,'#ffffff',group);sheetLabel.setAttribute('x',s.imagePoint[0]);sheetLabel.setAttribute('y',s.imagePoint[1]);sheetLabel.setAttribute('text-anchor','middle');sheetLabel.setAttribute('dominant-baseline','middle');
       }
     }
