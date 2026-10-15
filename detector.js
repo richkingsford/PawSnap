@@ -32,7 +32,7 @@
     for(let y=minY;y<=maxY;y++)rows.push({y,...rowScore(image,y)});
     const smoothed=rows.map((row,index)=>{const neighbors=rows.slice(Math.max(0,index-2),Math.min(rows.length,index+3));return {...row,smooth:neighbors.reduce((sum,item)=>sum+item.score,0)/neighbors.length};}),best=smoothed.reduce((winner,row)=>!winner||row.smooth>winner.smooth?row:winner,null),scores=smoothed.map(row=>row.smooth),baseline=median(scores),deviations=scores.map(score=>Math.abs(score-baseline)),mad=Math.max(1,median(deviations)),prominence=(best.smooth-baseline)/mad,confidence=clamp((prominence-1.25)/6)*.72+clamp(best.coverage/.72)*.28,minConfidence=Number.isFinite(options.minConfidence)?options.minConfidence:.48;
     if(confidence<minConfidence)return {points:fallback,confidence,accepted:false,source:'fallback',reason:'No continuous ceiling boundary cleared the confidence threshold.',edges:[]};
-    const detectedBottom=clamp(best.y/image.height,.08,.92),top=(fallback[0][1]+fallback[1][1])/2,left=Math.min(fallback[0][0],fallback[3][0]),right=Math.max(fallback[1][0],fallback[2][0]),points=[[left,top],[right,top],[right,detectedBottom],[left,detectedBottom]],edgeConfidence=clamp(confidence+.08);
+    const detectedBottom=clamp(best.y/image.height,.08,.92),top=(fallback[0][1]+fallback[1][1])/2,points=[[fallback[0][0],top],[fallback[1][0],top],[fallback[2][0],detectedBottom],[fallback[3][0],detectedBottom]],edgeConfidence=clamp(confidence+.08);
     return {points,confidence,accepted:true,source:'detected',reason:'Continuous cross-image ceiling boundary detected.',edges:[
       {kind:'image-edge',confidence:.55},{kind:'image-edge',confidence:.55},{kind:'color-transition',confidence:edgeConfidence},{kind:'image-edge',confidence:.55}
     ]};

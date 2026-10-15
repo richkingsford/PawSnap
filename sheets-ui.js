@@ -119,16 +119,16 @@ function drawDrywall(c,view='sheets',complete=true){
   const selected=document.getElementById('sheetSize').value,summary=document.getElementById('sheetSummary'),list=document.getElementById('cutInstructions');
   summary.textContent=view!=='sheets'?'Switch to Virtual sheets to see the optimized layout.':selected==='none'?'No drywall sheet selected. Choose a sheet size to create a layout.':'Calibrate the ceiling to lay out drywall sheets.';list.replaceChildren();
   if(view!=='sheets'||selected==='none'||!c)return;
-  const [width,length]=selected.split('x').map(Number),key=JSON.stringify([c.plane,width,length]);
+  const [width,length]=selected.split('x').map(Number),plane=c.plane.map(point=>point.map(value=>Math.abs(value)<1e-8?0:Math.round(value*1e8)/1e8)),key=JSON.stringify([plane,width,length]);
   if(state.drag){summary.textContent='Adjusting reference… release to update sheet layout.';return;}
   try{
     const anchorIndex=complete?-1:state.region.reduce((best,p,i)=>{
       const score=q=>Math.hypot((state.image.width-q[0])/state.image.width,(state.image.height-q[1])/state.image.height);
       return score(p)<score(state.region[best])?i:best;
     },0);
-    const anchor=complete?null:c.plane[anchorIndex];
+    const anchor=complete?null:plane[anchorIndex];
     const layoutKey=`${complete?'closed':'open'}:${state.sizePreset||'custom'}:${state.layoutOrientation||'auto'}:${key}:${anchor?anchor.join(','):''}`;
-    if(layoutKey!==sheetCacheKey){sheetCache=complete?(state.layoutOrientation==='rows'?SheetLayout.candidate(c.plane,length,width,0,0):SheetLayout.optimize(c.plane,width,length)):SheetLayout.visible(c.plane,width,length,anchor);sheetCacheKey=layoutKey;}
+    if(layoutKey!==sheetCacheKey){sheetCache=complete?(state.layoutOrientation==='rows'?SheetLayout.candidate(plane,length,width,0,0):SheetLayout.optimize(plane,width,length)):SheetLayout.visible(plane,width,length,anchor);sheetCacheKey=layoutKey;}
     const result=sheetCache;
     const sizeLabel=`${width/12}×${length/12}′`;
     const fullCount=result.sheets.length-result.cutSheets,stockCount=fullCount+Math.ceil(result.sheets.filter(s=>!s.full).reduce((sum,s)=>sum+s.used,0)/(width*length)),stockWaste=Math.max(0,stockCount*width*length-result.used);

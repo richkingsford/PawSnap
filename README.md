@@ -52,7 +52,7 @@ These are release-blocking rules.
 
 - Four points are the normal model. More than four points are created only by the installer with **Add dot**, or in the future by an auto-detector whose extra-corner confidence clears the explicit threshold in this specification.
 - The two screen-lateral edges remain perfectly horizontal. Dragging either endpoint vertically moves only its partner on that same horizontal edge to the same image Y coordinate.
-- Perspective side edges may lean. They must not be forced vertical.
+- Perspective side edges must lean toward the far wall. Four-corner editing enforces a minimum screen-space lean; a side edge cannot collapse into a screen-vertical line.
 - Dragging a corner changes photo coordinates only. It does not rewrite stored inch lengths.
 - No unrelated corner may jump when another corner is dragged. The sole allowed companion movement is the endpoint linked by the horizontal-edge rule.
 - Typing a horizontal or side length changes that room dimension and its opposite side. The adjacent room dimension remains unchanged.
@@ -98,9 +98,9 @@ The detector must be a pure, independently testable module. It must not mutate U
 
 1. Prefer four corners. Return more than four only when the evidence for every extra corner is high confidence and materially changes the ceiling boundary.
 2. Accepted polygons must be simple, clockwise, finite, nonzero-area, and entirely representable in the workspace coordinate system.
-3. For a four-point result, identify the two screen-lateral edges and normalize each to a single Y coordinate without forcing perspective side edges vertical.
+3. For a four-point result, identify the two screen-lateral edges and normalize each to a single Y coordinate. Perspective side edges must lean toward the far wall; they are never normalized vertically.
 4. Do not mistake joists, battens, ducts, pipes, windows, walls, lights, furniture, or internal framing lines for the room boundary.
-5. Cropped or occluded boundaries may be extrapolated off-photo only when supported by converging boundary evidence. Otherwise fall back to a safe four-corner proposal and let the installer adjust it.
+5. Cropped or occluded near boundaries are extrapolated beyond the PNG using converging perspective evidence. The likely near-corner dots may intentionally start off-photo. If evidence is weak, use the conservative perspective fallback and let the installer adjust it.
 6. Detection never invents inch scale. Existing provisional lengths remain populated, and installer-entered lengths remain authoritative.
 7. If confidence is below threshold, candidates cross, area is implausible, processing fails, or the detector times out, use the current safe four-corner fallback. The app must remain fully usable.
 8. A detection result may be applied only when a photo is first loaded or when the installer explicitly requests re-detection.

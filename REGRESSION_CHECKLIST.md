@@ -54,7 +54,8 @@ Run this section for every detector change and once before enabling detection in
 - [ ] Normal output has exactly four corners.
 - [ ] More than four corners are accepted only for an approved high-confidence fixture whose extra corners materially change the boundary.
 - [ ] Four-corner output identifies two screen-lateral edges and normalizes each to a single Y coordinate.
-- [ ] Perspective side edges are not forced vertical.
+- [ ] Perspective side edges lean toward the far wall and are not screen-vertical on any preset.
+- [ ] Cropped near corners are extrapolated beyond the image when the ceiling continues off-photo; off-photo dots remain visible and draggable in the padded workspace.
 - [ ] Point numbering has a deterministic starting corner and does not reorder across identical runs.
 - [ ] No candidate outline crosses itself, reaches an unstable perspective horizon, or creates a zero/near-zero dimension.
 - [ ] Low-confidence, invalid, timed-out, and processing-error results all produce the existing editable four-corner fallback.
@@ -103,7 +104,7 @@ Run this section for every detector change and once before enabling detection in
 - [ ] Dragging any point leaves all four stored inch values byte-for-byte unchanged.
 - [ ] Top and bottom green edges remain perfectly horizontal after pointer drag.
 - [ ] Repeat with Arrow keys and Shift+Arrow keys; linked movement and unchanged lengths remain correct.
-- [ ] Perspective side edges may lean and are never forced vertical.
+- [ ] Perspective side edges retain a visible lean toward the far wall and can never collapse into screen-vertical lines.
 - [ ] The selected point's menu remains visible after click and after drag release.
 - [ ] Menus flip left/up as needed and are fully visible near every workspace edge.
 
