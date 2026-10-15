@@ -1,85 +1,193 @@
-# CeilingScale
+# CeilingScale product specification
 
-Perspective-calibrated ceiling measurement in a static browser app. This replaces the former drywall planner, whose photo background did not measure or rectify the photographed ceiling.
+CeilingScale turns an angled ceiling photo plus installer-entered dimensions into an editable ceiling outline, a drywall-sheet layout, and one-cut-at-a-time installation diagrams. It is a static, local-first browser app: uploaded photos remain in the browser and no server API or build step is required.
 
-## Run
+This document is the product and behavior specification. `REGRESSION_CHECKLIST.md` is the release gate. If implementation behavior conflicts with this document, stop and resolve the conflict before merging.
 
-Open `index.html`, or run `python -m http.server 8765` and visit `http://localhost:8765`. No build step, server API, paid service, or uploaded-photo storage is required. GitHub Pages publishes `main` at https://richkingsford.github.io/PawSnap/.
+## Product goal
 
-## Measurement workflow
+Help an installer answer three questions without pretending that a single photo contains reliable physical scale:
 
-1. Load a sample or photo. The entire source image is preserved; zoom and scroll for precise marking.
-2. Default board mode assumes the marked board faces are exactly **2 inches wide**, as requested by the user. Mark A, B, C, D around a real framing rectangle on the selected plane, then mark two edge-to-edge board widths in different directions on that same plane. No rectangle dimensions need to be entered. Two widths are needed to resolve both axes without guessing camera parameters. They must be widths, not gaps or framing spacing.
-3. Adjust the four green starting corners to the visible ceiling. Suggested sample outlines are manually prepared approximations, not automatically detected room boundaries. Every sample and uploaded photo starts with exactly four editable corners; additional corners are only user-added.
-4. View 1-, 6-, or 12-inch grid lines; labels appear every 12 inches. X/Y coordinates originate at A and can be negative beyond the reference.
-5. Measure two points on the plane, inspect selected area and edge lengths, and compare a second measured distance to check calibration. Export an SVG with the photo, annotations, scale status and accuracy qualification embedded.
+1. What ceiling shape and dimensions are we assuming?
+2. How do common drywall sheets cover that ceiling with as few cuts as the planner can find?
+3. For every required cut, exactly what should be measured, kept, saved, reused, or discarded?
 
-Ceiling corners may sit outside a cropped photo. The photo is inset inside a padded work area, and that area expands to keep off-photo handles visible. Reference and ceiling-outline handles can be dragged beyond the image while captured. After calibration, any traced ceiling edge can also be selected by number and assigned a full length in inches: the chosen anchor endpoint remains fixed and the opposite endpoint is projected along the existing edge direction, including offscreen.
+The app favors understandable, editable assumptions over opaque automation. Automatic line detection may reduce setup work, but it must never silently override an installer.
 
-Clicking a green ceiling-outline point, or releasing it after a drag, opens a point menu. **Calculate** shows the two connected line lengths. One is editable at a time; applying it changes that room dimension and gives the opposite side the same length while preserving parallel sides and four 90° corners. The resulting inch lengths appear over the lines and the popup stays open for editing. Entering **Mark board widths** retains and displays existing purple width handles so they can be adjusted. Calibration uses the fixed 2-inch-board assumption directly when those marks are used.
+## Current workflow
 
-**Add dot** remains available for a user-confirmed non-rectangular ceiling; it is never added automatically. **Change all points** opens one inch-length field for every ceiling-outline line. For the normal four-corner ceiling, entering one side matches its opposite and entering one adjacent side completes the rectangle. Apply reshapes the green outline and uses those dimensions as the ceiling scale.
+### 1. Photo
 
-After a dot is added, every outline edge retains its editable inch input. Any edge whose screen angle reaches 45° or less from horizontal snaps immediately to a perfectly horizontal line; its connected endpoint moves with it. The same rule applies during pointer dragging, keyboard movement, and typed line-length changes.
+- The installer uploads a JPEG, PNG, or WebP, or selects one of five sample photos.
+- The complete source image is preserved.
+- Every new photo begins with exactly four green ceiling corner points and four populated line-length inputs.
+- Corners may be dragged beyond the photo; the workspace expands so off-photo handles and their menus remain usable.
+- Selecting another photo resets photo-specific points, dimensions, layout orientation, menus, and presets.
 
-Multi-point outlines obey signed closure math. Every edge always has a positive numeric estimate. Editing one horizontal or vertical edge keeps that value fixed and proportionally resizes the opposite-direction edge group; therefore split walls always add up to the wall opposite them. Dragging a dot is different: it changes only the photo-perspective overlay and never changes stored inch lengths. Only horizontal screen edges snap straight; vertical edges may lean with the camera perspective.
+### 2. Calibrate Ceiling
 
-If both edited lengths cannot geometrically meet while their neighboring dots remain fixed, live validation marks the fields invalid and shows the exact allowable interval for each value. Apply is blocked and no point moves until the pair is valid. Editing only one field remains valid: the selected point moves to satisfy it and the other displayed length recalculates.
+- Corner calibration is always active. There is no separate Mark corners, Mark board widths, Trace, Finish, Undo, or View workflow.
+- Every green edge has an editable inch input positioned at that edge's midpoint.
+- All displayed dimensions are rounded to one decimal place. A displayed decimal is presentation precision, not a measurement guarantee.
+- Area appears once, as compact text in Calibrate Ceiling.
+- The initial values are estimates. A photograph alone does not establish inches; installer-entered dimensions are authoritative.
+- The two demonstration presets are:
+  - **No cuts required:** 288 × 96 inches, laid out as two rows by three columns of 48 × 96-inch sheets.
+  - **1 cut required:** 144 × 96 inches, using two full sheets and two 48 × 48-inch pieces produced by one crosscut through one additional sheet.
 
-The Calculate popup always assumes 90° corners. It keeps one connected-line field editable; clicking the gray field switches the active room dimension. Apply matches the opposite side and maintains the rectangular lock.
+### 3. Drywall
 
-The green ceiling boundary and its corner handles remain visible and clickable in Sheets and Grid views after calibration or dimension entry, so Calculate and point adjustment never disappear after Apply. Photo view intentionally hides overlays.
+- Sheet choices are **No sheet-rock**, 48 × 96, 48 × 120, and 48 × 144 inches.
+- The default is a 48 × 96-inch drywall sheet.
+- The photo overlay always shows full and partial sheets, even for a 1 × 1-inch ceiling or when some ceiling boundary lies outside the photograph.
+- Full sheets are blue. Partial pieces are amber and show their finished `KEEP` dimensions.
+- Sheet and piece IDs are stable and unique within the current plan. Every cut-card ID matches its overlay ID.
+- The controls do not repeat a Full/Cut color key or sheet/offcut summary.
 
-Calibration is always active and uses a four-point rectangular ceiling; there is no separate Mark corners mode or board-width workflow. An editable inch input appears above every green edge. Focusing a box selects its current value for easy replacement. Typing mirrors the value into the opposite side immediately; pressing Enter or clicking away commits the inches, changes that dimension, and preserves parallel opposite sides and four 90° corners. Blank, zero, and negative entries are rejected with an inches-specific validation message.
+## Geometry and interaction invariants
 
-The two endpoints of each horizontal green edge are always vertically linked whenever the ceiling has four corners. Dragging either endpoint—or moving it with Up/Down arrow keys—in Mark corners, Sheets, Grid, or Adjust mode moves its partner to the identical image Y position. A horizontal green edge cannot become diagonal. Typed dimension changes reapply the same lock.
+These are release-blocking rules.
 
-The Calculate editor always opens and **Apply lengths** is always clickable. Before calibration is complete, applying identifies the missing Mark corners / Mark board widths prerequisite inside the popup; after calibration, the editor preloads the two current measurements and applies normally.
+### Four-corner ceilings
 
-Calibrate Ceiling includes two demonstration size presets for 4 × 8 ft sheets. **No cuts required** sets a 24 × 8 ft ceiling covered by six full sheets in two rows of three. **1 cut required** sets a 12 × 8 ft demonstration layout with two full sheets plus two half-sheet pieces produced by one crosscut through one additional sheet, for three purchased sheets total.
+- Four points are the normal model. More than four points are created only by the installer with **Add dot**, or in the future by an auto-detector whose extra-corner confidence clears the explicit threshold in this specification.
+- The two screen-lateral edges remain perfectly horizontal. Dragging either endpoint vertically moves only its partner on that same horizontal edge to the same image Y coordinate.
+- Perspective side edges may lean. They must not be forced vertical.
+- Dragging a corner changes photo coordinates only. It does not rewrite stored inch lengths.
+- No unrelated corner may jump when another corner is dragged. The sole allowed companion movement is the endpoint linked by the horizontal-edge rule.
+- Typing a horizontal or side length changes that room dimension and its opposite side. The adjacent room dimension remains unchanged.
+- Typed dimensions preserve parallel opposite sides and the 90-degree room model.
+- Blank, zero, negative, nonnumeric, or geometrically impossible input is rejected before geometry changes. Validation explains the problem and, when applicable, the valid range.
 
-Every orange partial piece carries its finished **KEEP** dimensions on the ceiling overlay without incorrectly claiming that every piece requires a new cut. The Drywall panel gives each piece its own orange instruction card. A **Cut S#** card shows the original sheet with blue outside dimensions, green post-cut dimensions inside every resulting edge, and unlabeled dotted saw lines. A reusable companion gets a **Use S#** card with no saw line and a reminder naming the saved piece and its source Cut card. Every `S#` matches the ceiling overlay. Every measured ceiling is treated as complete for layout purposes, so all full and partial sheets remain visible even when the photo omits room boundaries or the ceiling is smaller than one sheet.
+### Point popup
 
-Once dimensions or reference marks exist, calibration remains live while green outline points are adjusted. Manual length edits therefore apply immediately without a separate finishing step.
+- Clicking or releasing a dragged green point keeps its menu visible.
+- **Calculate** opens the two connected lengths. Exactly one is editable; selecting the other swaps the active dimension.
+- The popup states the 90-degree assumption briefly and has no angle toggle.
+- **Apply lengths** always provides a visible result: it either applies valid geometry or displays specific validation. It never fails silently.
+- **Change all points** presents exactly one populated input per outline edge, with compact spacing.
+- **Add dot** inserts one point to the right or below when a valid insertion is possible.
+- **Remove** never reduces the outline below three points.
 
-Point-length editing derives its transform directly from the four reference corners and four purple width points rather than depending on the full ceiling outline being valid. A temporarily crossed or incomplete outline does not disable Apply. Missing markers are reported with exact completion counts, and conflicting calibration marks show their actual geometry error in the popup.
+### Multi-point ceilings
 
-The photo workspace has no nested scrolling or clipping container. Its canvas is constrained to the available screen height, and point menus automatically flip left/up near an edge so both the action menu and expanded length editor remain visible.
+- Every edge always has a positive, populated inch value.
+- Each edge is classified as horizontal or perspective/vertical. An edge that becomes within 45 degrees of horizontal snaps horizontal immediately; perspective/vertical edges may lean.
+- Signed closure math must always balance. If one wall is 290 inches and the opposing wall is split across multiple collinear segments, those segments must total exactly 290 inches after rounding rules are applied.
+- Editing one edge preserves that requested value and proportionally adjusts the appropriate opposing group so horizontal and vertical signed totals close.
+- Dragging a point does not change stored inch values.
+- Every line input remains attached to the midpoint of its own green edge after drag, keyboard movement, apply, resize, or auto-detection.
 
-## Accuracy contract
+## Automatic ceiling-line detection — next milestone
 
-An ordinary single image has no absolute physical scale. Board mode supplies scale through the user's explicit 2-inch assumption, not through verified physical measurements. The Ceiling battens sample opens with approximate hand-placed framing and width marks and an estimated inch grid. Other samples start with no reference marks. These starter marks are editable and are not automatic board detection. No standard framing spacing or camera focal length is assumed.
+Auto-detection exists to propose a better initial outline. It does not measure physical inches and it does not own ceiling state.
 
-Four reference correspondences solve a projective homography between a rectangle and image pixels. In board mode the rectangle is initially unit-sized. For each rectified width segment, `(dx * width)^2 + (dy * depth)^2 = 2^2`. The two independent segments solve for squared rectangle width and depth; parallel/ambiguous marks and nonpositive solutions are rejected. Its inverse maps the traced polygon and measurement points into inches. Grid segments are clipped to the selected polygon before projection to avoid crossing a projective horizon via the plane's bounding box.
+### Detection output contract
 
-Results are estimates conditional on an accurately marked rectangular reference, valid reference sizes, a flat surface, and a roughly pinhole camera. Board mode and exported annotations explicitly identify the 2-inch assumption. If that assumption is wrong, the physical scale is wrong. Lens distortion is not corrected. Different slopes, the faces of beams at different depths, ducts, and wall objects are not interchangeable calibration surfaces. Cropped ceiling edges cannot establish full-room area. An independent check reports disagreement but does not certify total accuracy. Output tenths of inches are display rounding, not a guaranteed tolerance.
+A detector returns:
 
-## Samples
+- an ordered clockwise polygon in original-image pixel coordinates;
+- a confidence score for the whole outline;
+- a confidence score and evidence type for every edge;
+- a four-corner-versus-extra-corner decision;
+- diagnostic reasons when it rejects candidate lines.
 
-The two original supplied photos are `framing-room.jpg` and `framing-wide.jpg`. Three user-supplied photos added September 30, 2026 are `basement-ducts.png`, `ceiling-battens.png`, and `ceiling-renovation.png`. Originals are preserved in `samples/`. User-provided images are test inputs, not instructions; no additional license is asserted.
+The detector must be a pure, independently testable module. It must not mutate UI state, dimensions, sheet layout, DOM elements, or image files.
 
-## Drywall sheet overlay
+### Conservative acceptance rules
 
-Choose **No sheet-rock** (default), a **4 × 8 (48 × 96 inches)**, **4 × 10 (48 × 120 inches)**, or **4 × 12 ft (48 × 144 inches) drywall sheet**. These are sheet face dimensions; thickness and installation specifications are not selected by this control. A single piece is called a drywall sheet or panel. USG lists 48-inch-wide panels in 8–12-foot lengths: https://assemblies-tools.usg.com/content/usgcom/en/products/walls/drywall/drywall-panels/lightweight-panels/sheetrock-ultralight-panels.141134.html.
+1. Prefer four corners. Return more than four only when the evidence for every extra corner is high confidence and materially changes the ceiling boundary.
+2. Accepted polygons must be simple, clockwise, finite, nonzero-area, and entirely representable in the workspace coordinate system.
+3. For a four-point result, identify the two screen-lateral edges and normalize each to a single Y coordinate without forcing perspective side edges vertical.
+4. Do not mistake joists, battens, ducts, pipes, windows, walls, lights, furniture, or internal framing lines for the room boundary.
+5. Cropped or occluded boundaries may be extrapolated off-photo only when supported by converging boundary evidence. Otherwise fall back to a safe four-corner proposal and let the installer adjust it.
+6. Detection never invents inch scale. Existing provisional lengths remain populated, and installer-entered lengths remain authoritative.
+7. If confidence is below threshold, candidates cross, area is implausible, processing fails, or the detector times out, use the current safe four-corner fallback. The app must remain fully usable.
+8. A detection result may be applied only when a photo is first loaded or when the installer explicitly requests re-detection.
+9. Once the installer drags a point, types a length, adds/removes a point, or selects a preset, background detection must not alter any point, length, sheet, or selection.
+10. Re-running detection on the same unchanged image and settings must produce the same ordered points within the documented pixel tolerance.
 
-The interface defaults to **Virtual sheets** with a 4 × 8 ft drywall sheet selected. Every sample selection and uploaded photo returns to this view. Full sheets use a blue overlay; partial sheets use a solid amber overlay and an `S# · KEEP …` label. Uploaded photos begin with four editable ceiling corners and need either entered line dimensions or reference calibration before sheets can be placed. **No sheet-rock** remains available in the sheet-size dropdown to disable layout.
+### Integration rules
 
-Photo boundaries are not treated as ceiling boundaries. If any traced ceiling point touches the image edge, the perimeter is considered incomplete: the layout uses full-sheet tiling, shows labels such as `1 · 4×8′`, reports that cuts are unknown, and produces no cut list. Cut highlighting and cut outlines are enabled only when the complete traced perimeter lies inside the photo. This avoids falsely prescribing cuts where the ceiling continues beyond the camera frame.
+- The existing manual outline remains available immediately; detection must never block photo loading or editing.
+- Apply the detector result as one atomic state update. Never show a partially detected polygon.
+- Initialize edge IDs, axis classifications, lengths, line inputs, and sheet layout through the same state path used by manual outlines.
+- Do not couple detector confidence to drywall optimization. The planner consumes only the currently accepted polygon and dimensions.
+- Preserve point numbering clockwise and choose a deterministic starting corner so labels do not reorder between renders.
+- Auto-detection changes require fixture tests for all five samples plus cropped, cluttered, low-contrast, and perspective cases before UI integration.
+- The detector ships behind a disabled-by-default feature flag until its fixture tests and every P0 checklist item pass.
 
-Open-perimeter sheets are numbered by the projected sheet-label point's normalized distance from the image bottom-right, so sheet 1 begins in the most prominent nearby corner and numbering proceeds outward. Sheet overlays remain clipped to the traced ceiling polygon; walls and other non-ceiling photo areas stay empty. In Virtual sheets view, calibration corners, scale marks, and boundary handles are hidden after successful calibration. They reappear in Grid view, during marking, or whenever calibration is incomplete.
+### Required change sequence
 
-The open-perimeter sheet grid is anchored to the traced ceiling vertex nearest the image bottom-right. Full sheets tile leftward and upward from that corner. This avoids thin residual rows caused by an unrelated calibration origin, eliminating ghost fragments and duplicate-looking labels along the visible lower edge.
+1. Before detector code lands, freeze the current manual-workflow baseline: initial points, edge lengths, sheet counts, overlay IDs, cut-card IDs, desktop screenshots, and a narrow-layout screenshot for all five samples.
+2. Add the pure detector and its labeled fixtures without connecting it to the app. Prove deterministic output, confidence reporting, invalid-result rejection, and fallback selection first.
+3. Integrate detection behind a disabled-by-default feature flag. The flag-off path must remain byte-for-byte equivalent to the frozen baseline wherever deterministic output is expected.
+4. Add race tests proving a late result cannot overwrite a photo change or any manual edit.
+5. Run the complete P0 checklist with the flag off and on. Fix every regression before considering the detector complete.
+6. Enabling detection by default requires an explicit reviewed commit. Detection thresholds must be named, versioned configuration—not scattered magic numbers—and their fixture evidence must be committed with the threshold change.
 
-The planner searches both sheet orientations, offsets aligned with polygon vertices and bounding edges, and eight evenly spaced offsets per axis. It ranks candidates lexicographically by distinct trim lines per stock sheet, number of cut sheets, stock sheet count, and offcut area. This bounded geometric search yields the best tested arrangement, not a globally optimal nesting solution or a verified installation plan. It can prefer greater waste to reduce trim edges. Framing supports, staggered seams, holes/fixtures, kerf, and reuse of offcuts across stock sheets are not modeled. One stock sheet is counted per occupied layout cell, even when its intersection produces multiple separate pieces. The traced region may be only the visible part of the ceiling.
+### Auto-detection acceptance targets
 
-Numbered overlays are clipped in physical ceiling coordinates, then projected onto the photo. Blue denotes full sheets; amber denotes cut sheets. The cut list gives rectangular cuts or custom-outline bounds. Each downloadable SVG shows the stock perimeter, retained pieces, and vertex coordinates in inches from the stock top-left. It is not a full-size print template. Scale qualifications are retained on exports.
+- All five repository samples load successfully with exactly four initial points unless an approved fixture explicitly expects more.
+- No accepted outline self-intersects or collapses.
+- No sample loses its editable inputs, horizontal locking, point menu, sheet overlay, or cut cards.
+- A low-confidence image reaches the editable fallback state, not an error state.
+- Manual edits made after detection survive redraw, sheet-size changes, viewport resizing, and delayed detector completion.
+- Detection adds no browser-console errors and does not create horizontal page overflow at desktop or 775-pixel viewport width.
 
-`vendor/polygon-clipping.js` is the bundled UMD distribution of polygon-clipping 0.15.7 (MIT), used for intersections including concave and disconnected shapes. Its license and bundled dependency notices are included in `vendor/`. No runtime CDN is required.
+## Drywall layout and cut-card contract
 
-Run `node layout.test.js` to verify coverage conservation, exact full-sheet fits, rotation and translation, cut minimization, concave shapes, disconnected pieces, and size limits.
+- The planner searches both sheet orientations and a bounded set of offsets. It ranks candidates by trim lines, cut sheets, stock-sheet count, and offcut area. This is the best tested bounded arrangement, not a proof of global optimum.
+- A selected preset retains its intended orientation while the outline is resized.
+- A full sheet has one centered overlay label. A partial sheet has one readable `S# · KEEP width×length` label.
+- There are no ghost sheets, merged labels, duplicate IDs, or visible sheet fragments outside the accepted ceiling polygon.
+- Each **Cut S#** card contains exactly one dotted saw line and one physical cut.
+- If a plan needs another cut, it creates another card and explicitly identifies the saved source piece.
+- A reusable piece receives a **Use S#** card with no saw line.
+- Blue outside dimensions describe the incoming stock or saved piece. Green inside dimensions describe post-cut pieces. Green, blue, and red callouts point to KEEP, SAVE, and DISCARD regions without overlap.
+- Cards span the right pane below the photo. The diagram is large, the steps are concise, and no redundant metrics appear below the cut plan.
 
-## Measurement verification
+Not modeled: framing support, seam staggering, fixtures and penetrations, kerf, fastening, code compliance, or arbitrary two-dimensional offcut nesting. The installer must verify the plan before cutting.
 
-Run `node geometry.test.js`. Tests use a synthetic camera with known geometry to verify interior and extrapolated coordinates, distances, area, and rejection of invalid references and polygons. These validate the mathematics, not physical accuracy on the supplied photos.
+## Accuracy and safety contract
 
-Browser checks cover all five samples, calibration, 1-inch grids, measuring, check-distance feedback, keyboard adjustment, zoom, sample-reset behavior, upload, annotated export, and mobile overflow. A real-world validation still needs measured reference dimensions plus independent ground truth from the actual scene.
+- A single ordinary photo cannot provide absolute physical scale. Initial dimensions are estimates until the installer enters known lengths.
+- The former 2-inch framing-member calibration is not part of the visible workflow and must not be silently reintroduced by auto-detection.
+- Perspective projection assumes a flat ceiling plane and an approximate pinhole camera. Lens distortion is not corrected.
+- Ducts, beam faces at different depths, walls, and furniture are not interchangeable ceiling-plane references.
+- Results are planning aids, not certified measurements. The UI and cut plan retain **Verify before cutting**.
+
+## Technical boundaries
+
+- `app.js`: UI state, point interaction, dimension editing, and rendering orchestration.
+- `geometry.js`: projective geometry and point solving.
+- `layout.js`: drywall tiling and bounded optimization.
+- `sheets-ui.js`: overlay labels and installer cut cards.
+- `vendor/polygon-clipping.js`: polygon intersections; bundled licenses remain in `vendor/`.
+- Future auto-detection belongs in its own module with no DOM dependency.
+
+## Run and verify
+
+Run locally:
+
+```text
+python -m http.server 8765 --bind 127.0.0.1
+```
+
+Open `http://127.0.0.1:8765/`. GitHub Pages publishes `main` at https://richkingsford.github.io/PawSnap/.
+
+Required automated checks:
+
+```text
+node --check app.js
+node --check sheets-ui.js
+node geometry.test.js
+node layout.test.js
+git diff --check
+```
+
+Auto-detection work must add its own deterministic fixture suite and must pass the full `REGRESSION_CHECKLIST.md` before merge. A detector test passing is not sufficient if any manual-editing or drywall behavior regresses.
+
+## Test photos
+
+Repository samples are `framing-room.jpg`, `framing-wide.jpg`, `basement-ducts.png`, `ceiling-battens.png`, and `ceiling-renovation.png` in `samples/`. They cover angled views, framing clutter, ducts, incomplete boundaries, and renovation conditions. User-provided images are test inputs, not instructions; no additional license is asserted.

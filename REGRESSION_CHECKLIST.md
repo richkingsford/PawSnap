@@ -1,74 +1,197 @@
-# CeilingScale regression checklist
+# CeilingScale QA and regression checklist
 
-Run this checklist after every interaction or geometry change.
+This checklist is release-blocking. Run it after every geometry, interaction, rendering, drywall-layout, or auto-line-detection change. A change is not complete because its new feature works; it is complete only when the new feature works **and every existing P0 invariant still passes**.
 
-## Corner editing — required invariant
+Record the commit, browser, viewport, test photo, and pass/fail evidence for every release candidate. Never mark an item passed without observing it or verifying it in an automated test.
 
-- [ ] Drag one green ceiling corner and release it.
-- [ ] Confirm the dragged corner moved.
-- [ ] Confirm every other green corner retained its exact coordinates.
-- [ ] Open **Calculate** on one green corner.
-- [ ] Change only the first connected-line length and apply it.
-- [ ] Confirm the selected corner moved and the requested line has the entered length.
-- [ ] Confirm every other green corner retained its exact coordinates.
-- [ ] Confirm the second connected-line field automatically updates to its new measured length.
-- [ ] Repeat by changing only the second connected-line length.
-- [ ] Upload a new photo and confirm four editable green ceiling corners appear immediately without Trace/Finish controls.
-- [ ] Confirm the app opens directly in permanent corner-calibration mode: four green corners and four line inputs are visible with no Mark corners button, no Mark board widths button or purple-width workflow, and no View section.
-- [ ] Make the ceiling outline temporarily invalid while all four reference corners and four purple width points remain valid; Calculate/Apply must still move only the selected point by using the reference calibration directly.
-- [ ] With incomplete calibration markers, confirm the popup reports exact completion counts instead of a generic “finish calibration” message.
-- [ ] Change both connected-line lengths and confirm the selected point moves to the nearest valid intersection while every other point remains fixed.
-- [ ] Enter an impossible pair of lengths and confirm Apply is blocked with exact allowable ranges for both fields; no point may move.
+## P0 release gate
 
-## Calibration controls
+- [ ] Working tree contains only the intended change; user-owned files and artifacts are untouched.
+- [ ] `node --check app.js` passes.
+- [ ] `node --check sheets-ui.js` passes.
+- [ ] `node geometry.test.js` passes.
+- [ ] `node layout.test.js` passes.
+- [ ] The auto-detection fixture suite passes when detector code is present.
+- [ ] `git diff --check` passes.
+- [ ] The app loads from a fresh cache-busted local URL with no application console errors.
+- [ ] Desktop layout at 1440 × 1000 has no clipped menus or unexpected overflow.
+- [ ] Narrow layout at 775 × 900 has no horizontal page overflow.
+- [ ] All five sample photos load and remain editable.
+- [ ] A user-uploaded photo loads and remains editable.
+- [ ] No P0 item below is skipped because the change “only affects detection.”
 
-- [ ] **Mark corners** leaves all four green ceiling handles visible and draggable, including outside the photo.
-- [ ] **Mark board widths** immediately shows all four purple handles and allows them to be dragged.
-- [ ] Clicking or dragging a green point leaves its **Calculate / Remove** menu visible.
-- [ ] Open every sample and confirm exactly four green corners; there are no automatic extra-corner exceptions.
-- [ ] Enter Mark corners and confirm one editable inch input appears above each of the four green edges. Change each orientation in turn and confirm the opposite edge matches, both opposite edges remain parallel, and all four corners remain 90°.
-- [ ] Focus each inline line input, type a positive inch value, and press Enter. Repeat by clicking away instead. Confirm both commit paths reshape that dimension, mirror the opposite input, preserve the adjacent dimension, and reject blank, zero, or negative values with a clear inches-specific message.
-- [ ] Click **No cuts required** and confirm a 24 × 8 ft ceiling displays six full 4 × 8 ft sheets in exactly two rows and three columns with no cuts; the optimizer must not rotate this preset into one row of six.
-- [ ] After selecting **No cuts required**, drag every green corner horizontally and vertically and repeat with arrow keys. Confirm the preset remains selected and the layout remains exactly two rows by three columns after every resize.
-- [ ] Select **No cuts required**, change the 288-inch horizontal line to 290 inches, and apply. Confirm the two-row orientation remains: six full 96×48-inch pieces plus two orange 2×48-inch strips. Overlay labels must identify the two pieces and read `KEEP 2×48″`; the Drywall panel must show one **Cut** card and one **Use** card for the saved strip; the summary must report seven sheets.
-- [ ] Click **1 cut required** and confirm a 12 × 8 ft ceiling displays two full sheets plus two half-sheet pieces produced by exactly one physical crosscut, with three purchased sheets total.
-- [ ] With **1 cut required**, confirm orange overlay labels identify `S1` and `S2` without calling both pieces cuts. Confirm **Cut S1** shows one 48 × 96-inch sheet, blue original dimensions outside, green 48-inch post-cut dimensions inside, and one unlabeled dotted line. Confirm **Use S2** has no dotted line and says `Use the 48″ × 48″ piece from Cut S1.`
-- [ ] Confirm cut cards use the approved compact installer-ticket layout: sheet diagram on the left, numbered steps on the right, and a green save/reuse reminder.
-- [ ] Confirm the cut plan appears at full width in the right pane directly below the ceiling photo, never inside the narrow controls column.
-- [ ] Confirm cut diagrams have no overlapping section labels: green **KEEP**, blue **SAVE**, and red **DISCARD** callouts sit outside the sheet and point to their matching sections.
-- [ ] Confirm Cut cards do not repeat the diagram's save instruction in a separate green reminder box.
-- [ ] Confirm visible lengths use no more than one decimal place.
-- [ ] Confirm nothing appears below the cut plan except the page footer. Area appears once as small text in Calibrate Ceiling, and the sheet summary appears once in Drywall.
-- [ ] Confirm every **Cut S#** card contains exactly one dotted cut line. Plans needing multiple cuts must create a sequence of single-cut cards and carry the saved remainder forward explicitly.
-- [ ] Confirm sheet IDs and dimensions remain readable when the full photo is scaled down in the workspace.
-- [ ] On a fresh photo, confirm a sheet layout appears immediately from the populated dimension estimates. Enter 1 inch for both room dimensions and confirm one orange partial sheet remains visible, labeled `KEEP 1×1″`; partial sheets must never be hidden because an outline touches or extends beyond the photo.
-- [ ] In Mark corners, drag each green endpoint vertically. Confirm its partner on the same horizontal edge moves to the identical Y position, while the other horizontal edge does not move.
-- [ ] Repeat every four-corner vertical drag in Sheets/Grid Adjust mode and with Up/Down arrow keys. The linked endpoint must move to the identical Y coordinate; a horizontal green edge must never become diagonal in any editable mode.
-- [ ] Confirm Trace outline, Finish, Undo, and the width-point count are absent; calibration marking and point editing still work.
-- [ ] Confirm cut sheets use a solid amber fill with no yellow interior stripes.
-- [ ] Click **Add dot** and confirm exactly one point is inserted to the right or below the selected point, with the popup attached to the new point.
-- [ ] After **Add dot**, confirm there is still exactly one editable inch input for every outline edge. Drag the new point until either adjacent edge reaches 45° or less from horizontal; confirm that edge immediately becomes exactly horizontal and its connected endpoint follows. Repeat with arrow keys and a typed edge length.
-- [ ] Create a 6-point orthogonal outline where one 290-inch horizontal wall opposes two horizontal segments. Change any one line input and apply. Confirm no input is blank, all edges remain horizontal or vertical, the two opposing horizontal segments total exactly 290 inches, vertical signed totals also match, and the edited value itself is preserved.
-- [ ] On the same multi-point outline, drag and keyboard-move every point horizontally and vertically. Confirm every displayed inch value remains byte-for-byte unchanged, horizontal screen edges remain horizontal, vertical edges may lean with photo perspective, and every line input follows the midpoint of its own green edge.
-- [ ] Grab a point with one horizontal neighbor and one perspective/vertical neighbor, then drag it until the perspective edge crosses 45°. Confirm only the neighbor that was horizontal at drag start follows vertically; the perspective neighbor must retain both original coordinates and never jump.
-- [ ] On the normal four-corner outline, drag Dot 3 lower and sideways. Confirm Dot 4 follows vertically to preserve the true bottom horizontal wall, while Dot 2 retains both exact coordinates even if the perspective side wall looks shallower than 45°.
-- [ ] Open **Change all points** with and without completed scale marks. Confirm there is exactly one inch-length input for every outline line and no missing-corners message replaces the fields.
-- [ ] On a calibrated photo, change one line and Apply. Confirm its opposite line matches, opposite lines stay parallel, and every corner remains 90°.
-- [ ] On an uncalibrated four-corner photo, enter Line 1 and confirm Line 3 matches automatically; enter Line 2 and confirm Line 4 matches. Apply without scale marks and confirm area, grid, and sheets become calibrated from those dimensions.
-- [ ] After applying dimensions in Sheets view, confirm the green boundary and every green corner remain visible and clickable. Reopen the two-box Calculate editor, change its editable line, and confirm the opposite side matches while the rectangle remains locked.
-- [ ] Clear a changed all-lines value or enter an impossible 90° length and confirm specific validation appears and no point moves.
-- [ ] Confirm the popup shows the brief **90° corners assumed** note, with no checkbox. Exactly one connected-line field is editable and the other is visibly grayed.
-- [ ] Repeat on every sample corner. If the initially preferred line is too long to be a right-triangle leg, confirm the other valid line becomes active automatically and its partner is calculated.
-- [ ] Click the grayed field. Confirm it becomes editable and the previously active field becomes grayed.
-- [ ] Enter a valid active-leg length and confirm the other leg calculates automatically; Apply must move only the selected point and produce a 90° angle.
-- [ ] Enter a leg length equal to or greater than the fixed neighbor spacing and confirm validation shows the exact valid interval and blocks Apply.
+## P0 auto-line detection contract
 
-## Workspace and sheet overlay
+Run this section for every detector change and once before enabling detection in production.
 
+### Baseline and rollout
+
+- [ ] Before the first detector implementation commit, capture a machine-readable baseline for all five samples: ordered points, edge lengths, sheet count, overlay IDs, Cut/Use card IDs, and selected layout orientation.
+- [ ] Capture matching 1440 × 1000 screenshots and at least one 775 × 900 screenshot.
+- [ ] With the detection flag off, compare against that baseline and explain every difference; no unexplained difference is accepted.
+- [ ] Detector-only tests land and pass before detector output is connected to app state.
+- [ ] Initial integration is disabled by default.
+- [ ] Thresholds are named, versioned configuration values with committed fixture evidence; no inline confidence magic numbers are accepted.
+- [ ] Enabling detection by default is a separate reviewed commit after flag-off and flag-on P0 runs both pass.
+
+### Module and state isolation
+
+- [ ] Detection is implemented as a pure module with no DOM writes and no direct mutation of app state.
+- [ ] Given identical image bytes and settings, detection returns the same ordered polygon within the documented pixel tolerance.
+- [ ] The result contains an overall confidence, per-edge confidence/evidence, and a four-versus-extra-corner decision.
+- [ ] Detection runs only on initial photo load or an explicit re-detect action.
+- [ ] Applying a result is atomic; the UI never renders a half-built outline.
+- [ ] Sheet layout consumes only the accepted app polygon and dimensions, never hidden detector candidates.
+- [ ] Delayed detector completion is ignored after the user drags a point, types a length, adds/removes a point, changes photo, or selects a preset.
+- [ ] Detection cannot overwrite installer-entered inch values.
+- [ ] Detection cannot invent or claim physical inch scale.
+
+### Geometry acceptance
+
+- [ ] Every accepted point is finite and expressed in original-image pixel coordinates.
+- [ ] Every accepted polygon is clockwise, simple, nonzero-area, and stable under redraw.
+- [ ] Normal output has exactly four corners.
+- [ ] More than four corners are accepted only for an approved high-confidence fixture whose extra corners materially change the boundary.
+- [ ] Four-corner output identifies two screen-lateral edges and normalizes each to a single Y coordinate.
+- [ ] Perspective side edges are not forced vertical.
+- [ ] Point numbering has a deterministic starting corner and does not reorder across identical runs.
+- [ ] No candidate outline crosses itself, reaches an unstable perspective horizon, or creates a zero/near-zero dimension.
+- [ ] Low-confidence, invalid, timed-out, and processing-error results all produce the existing editable four-corner fallback.
+
+### False-positive resistance
+
+- [ ] Joists and battens inside the ceiling are not mistaken for room boundaries.
+- [ ] Ducts, pipes, wires, lights, fans, and fixtures are not mistaken for room boundaries.
+- [ ] Windows, doors, wall trim, ladders, furniture, and people are not mistaken for ceiling boundaries.
+- [ ] Repeating framing lines do not produce dozens of corners.
+- [ ] Cropped boundaries are extrapolated only when supported by converging boundary evidence; otherwise the fallback is used.
+- [ ] Low contrast, glare, shadows, exposed framing, finished ceilings, and textured ceilings do not crash detection.
+
+### Required fixture matrix
+
+- [ ] `framing-room.jpg`: loads with the approved four-point result or fallback; no extra interior-joist points.
+- [ ] `framing-wide.jpg`: loads with the approved four-point result or fallback; strong grid lines do not become room edges.
+- [ ] `basement-ducts.png`: loads with the approved four-point result or fallback; ducts and pipes are ignored.
+- [ ] `ceiling-battens.png`: loads with the approved four-point result or fallback; battens are ignored as boundary candidates.
+- [ ] `ceiling-renovation.png`: loads with the approved four-point result or fallback; clutter and partial demolition do not create extra corners.
+- [ ] Cropped-ceiling fixture: off-photo geometry remains editable and handles remain reachable.
+- [ ] Low-contrast fixture: fallback remains fully usable.
+- [ ] Strong-perspective fixture: polygon is simple and side edges may lean.
+- [ ] No-ceiling/ambiguous fixture: detector declines confidently and uses fallback rather than fabricating a boundary.
+
+## P0 photo loading and reset
+
+- [ ] Every sample button shows the correct thumbnail and title.
+- [ ] The former sample title is **Sheets of Drywall on a Ceiling**, not **Ceiling battens**.
+- [ ] Upload accepts JPEG, PNG, and WebP and shows a clear error for an unreadable file.
+- [ ] A new sample or upload resets points, dimensions, selected preset, popup state, and layout orientation from the prior image.
+- [ ] A new photo immediately shows exactly four green corners and one populated inch input per edge.
+- [ ] The whole photo remains visible; the app does not crop the source to manufacture a ceiling boundary.
+- [ ] Corners can be dragged outside the photo and remain visible and recoverable.
+
+## P0 four-corner editing invariants
+
+- [ ] Drag Point 1 horizontally and vertically. Point 1 moves to the pointer.
+- [ ] Only Point 2 may follow vertically to preserve their horizontal edge; Points 3 and 4 retain exact coordinates.
+- [ ] Repeat for Points 2, 3, and 4. Only the endpoint on the same horizontal edge may share the Y movement.
+- [ ] A perspective side neighbor never jumps, even when its displayed angle crosses 45 degrees.
+- [ ] Dragging any point leaves all four stored inch values byte-for-byte unchanged.
+- [ ] Top and bottom green edges remain perfectly horizontal after pointer drag.
+- [ ] Repeat with Arrow keys and Shift+Arrow keys; linked movement and unchanged lengths remain correct.
+- [ ] Perspective side edges may lean and are never forced vertical.
+- [ ] The selected point's menu remains visible after click and after drag release.
+- [ ] Menus flip left/up as needed and are fully visible near every workspace edge.
+
+## P0 inline dimension editing
+
+- [ ] One editable input is visible at the midpoint of every green edge at all times.
+- [ ] Inputs remain attached to their edge after drag, keyboard movement, apply, viewport resize, sample change, and detector result application.
+- [ ] Focus selects the current value for easy replacement.
+- [ ] Enter a positive horizontal length and press Enter. The edited side and its opposite match; the adjacent dimension is unchanged.
+- [ ] Repeat by clicking away instead of pressing Enter.
+- [ ] Repeat for a perspective/side length.
+- [ ] All four corners retain the 90-degree room model after typed changes.
+- [ ] Blank input is rejected with a specific message and no geometry moves.
+- [ ] Zero, negative, nonnumeric, and out-of-range values are rejected with specific guidance and no geometry moves.
+- [ ] Visible measurements use no more than one decimal place.
+- [ ] No input is blank after any valid operation.
+
+## P0 Calculate popup
+
+- [ ] Click every green corner and choose **Calculate**.
+- [ ] Two connected lengths appear; exactly one is editable and the other is visibly gray.
+- [ ] Clicking the gray input swaps the active dimension.
+- [ ] The brief **90° corners assumed** note is visible; no checkbox is present.
+- [ ] Enter a valid length and click **Apply lengths**. The requested dimension and its opposite update.
+- [ ] The popup remains usable and displays the recalculated companion length.
+- [ ] Apply never fails silently: invalid input shows why it is invalid and, when applicable, the possible range.
+- [ ] An invalid apply moves no point.
+- [ ] **Change all points** shows exactly one populated input for every outline edge with cozy vertical spacing.
+- [ ] **Back** returns without changing geometry.
+- [ ] **Remove** cannot reduce the outline below three points.
+
+## P0 Add dot and multi-point outlines
+
+- [ ] **Add dot** creates exactly one point to the right or below the selected point and attaches the menu to it.
+- [ ] Every resulting edge immediately has a populated editable inch input.
+- [ ] An edge within 45 degrees of horizontal snaps perfectly horizontal and moves only its horizontally linked endpoint.
+- [ ] Perspective/vertical edges may lean.
+- [ ] Repeat snapping with pointer drag, Arrow keys, and typed length.
+- [ ] Create a six-point orthogonal outline where a 290-inch wall opposes two horizontal segments.
+- [ ] Change one opposing segment. Its entered value is preserved and the opposing segment group totals exactly 290.0 inches.
+- [ ] Confirm horizontal and vertical signed totals both close after every single-field edit.
+- [ ] Drag and keyboard-move every multi-point corner; all stored inch values remain unchanged.
+- [ ] Every line input tracks the midpoint of its own edge.
+- [ ] No unrelated point jumps when a point with one horizontal and one perspective neighbor is moved.
+- [ ] A self-intersecting or impossible outline is rejected with a clear message and without losing the last valid state.
+
+## P0 presets and drywall layout
+
+- [ ] **No cuts required** produces a 288 × 96-inch ceiling with six full 48 × 96-inch sheets in exactly two rows by three columns.
+- [ ] Drag every corner and repeat with Arrow keys; the preset's two-row orientation does not revert to one row of six.
+- [ ] Change the 288-inch line to 290 inches. The plan remains in two rows and adds the correct 2 × 48-inch partial pieces.
+- [ ] **1 cut required** produces two full sheets plus two 48 × 48-inch pieces from one crosscut through one additional sheet.
+- [ ] Selecting each sheet size recalculates the overlay without changing points or trusted dimensions.
+- [ ] **No sheet-rock** removes the sheet overlay and cut plan without removing calibration points or lengths.
+- [ ] A 1 × 1-inch ceiling still displays one partial sheet labeled with `KEEP 1×1″` dimensions.
+- [ ] Full and partial sheets remain visible even when the ceiling extends beyond the photo.
+- [ ] Every full sheet has one centered readable label.
+- [ ] There are no ghost sheets, duplicate IDs, merged labels, or unlabeled visible pieces.
+- [ ] Sheet 1 starts at the intended prominent/bottom-right installation corner and numbering remains deterministic.
+- [ ] Walls and non-ceiling areas outside the accepted polygon remain empty.
+
+## P0 cut-card contract
+
+- [ ] Every overlay `S#` has exactly one corresponding Cut or Use card when instructions are required.
+- [ ] Every **Cut S#** card contains exactly one dotted saw line and represents one physical cut.
+- [ ] Every **Use S#** card has no dotted cut line and names the saved source piece and source Cut card.
+- [ ] Blue outside dimensions show incoming stock/saved-piece dimensions.
+- [ ] Green inside dimensions show post-cut piece dimensions on every resulting edge.
+- [ ] Green KEEP, blue SAVE, and red DISCARD labels sit outside cramped regions and point to the correct colored section.
+- [ ] Diagram text does not overlap at desktop or narrow width.
+- [ ] Cards span the right pane directly below the photo and are not squeezed into the controls column.
+- [ ] Cut-card text uses one decimal place at most.
+- [ ] The installer can execute each card without inferring which piece to keep, save, reuse, or discard.
+
+## P0 clean UI and accessibility
+
+- [ ] The interface has Photo, Calibrate Ceiling, and Drywall sections only.
+- [ ] Mark corners, Mark board widths, Trace outline, Finish, Undo, and View controls are absent.
+- [ ] The redundant calibration instruction, status badge, mode label, Ceiling plane eyebrow, and sheet/offcut summary are absent.
+- [ ] Drywall section has no redundant Full/Cut squares.
+- [ ] Help is behind `?` controls and each help control has an accessible name.
+- [ ] Green points are keyboard focusable and have point-number labels.
+- [ ] Line inputs have unique accessible labels in inches.
+- [ ] Errors are exposed through alert/status regions and are not color-only.
 - [ ] The photo workspace has no nested scrollbar.
-- [ ] Point menus remain fully visible at the top, right, bottom, and left edges.
-- [ ] Open-photo layouts show only complete drywall sheets, with one centered label per sheet.
-- [ ] No cut is shown where the photographed ceiling boundary is incomplete.
-- [ ] Confirm the main workspace does not show the redundant calibration instruction, status badge, mode label, ceiling-plane eyebrow, or sheet/offcut summary.
-- [ ] Confirm Drywall section 3 contains the sheet-size selector without the redundant Full/Cut color squares.
-- [ ] Confirm the former **Ceiling battens** sample is labeled **Sheets of Drywall on a Ceiling** in both its button and workspace title.
+- [ ] Nothing appears below the cut plan except the page footer.
+
+## Evidence to retain for auto-detection changes
+
+- [ ] Automated test output for geometry, layout, syntax, and detector fixtures.
+- [ ] A before/after coordinate report for every detection fixture.
+- [ ] Desktop screenshots for all five samples.
+- [ ] At least one 775-pixel-wide screenshot.
+- [ ] A screen recording proving: detection completes, a corner is dragged, a length is typed, a sheet size is changed, and none of those manual changes are overwritten afterward.
+- [ ] Console log showing no application errors.
+- [ ] Commit hash and reviewer sign-off for any change to acceptance thresholds or fallback behavior.
